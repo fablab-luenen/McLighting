@@ -3,24 +3,24 @@
 // ***************************************************************************
 // Load libraries for: WebServer / WiFiManager / WebSockets
 // ***************************************************************************
-#include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
+#include <ESP8266WiFi.h>           //https://github.com/esp8266/Arduino
 
 // needed for library WiFiManager
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
-#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager
+#include <WiFiManager.h>           //https://github.com/tzapu/WiFiManager
 
 #include <WiFiClient.h>
 #include <ESP8266mDNS.h>
 #include <FS.h>
 #include <EEPROM.h>
 
-#include <WebSockets.h>           //https://github.com/Links2004/arduinoWebSockets
+#include <WebSockets.h>            //https://github.com/Links2004/arduinoWebSockets
 #include <WebSocketsServer.h>
   
 #ifdef ENABLE_BUTTON_GY33
   // needed for MCU
-  #include <GY33_MCU.h>           //https://github.com/FabLab-Luenen/GY33_MCU/archive/master.zip ; //https://github.com/pasko-zh/brzo_i2c
+  #include <GY33_MCU.h>            //https://github.com/FabLab-Luenen/GY33_MCU/archive/master.zip ; //https://github.com/pasko-zh/brzo_i2c
   // ***************************************************************************
   // Initialize Color Sensor
   // ***************************************************************************
@@ -35,14 +35,14 @@
 
 //SPIFFS Save
 #if !defined(ENABLE_HOMEASSISTANT) and defined(ENABLE_STATE_SAVE_SPIFFS)
-  #include <ArduinoJson.h>        //https://github.com/bblanchon/ArduinoJson
+  #include <ArduinoJson.h>         //https://github.com/bblanchon/ArduinoJson
 #endif
 
 // MQTT
 #ifdef ENABLE_MQTT
   #include <PubSubClient.h>
   #ifdef ENABLE_HOMEASSISTANT
-    #include <ArduinoJson.h>     //https://github.com/bblanchon/ArduinoJson
+    #include <ArduinoJson.h>       //https://github.com/bblanchon/ArduinoJson
   #endif
 
   WiFiClient espClient;
@@ -50,8 +50,8 @@
 #endif
 
 #ifdef ENABLE_AMQTT
-  #include <AsyncMqttClient.h>    //https://github.com/marvinroger/async-mqtt-client
-                                  //https://github.com/me-no-dev/ESPAsyncTCP
+  #include <AsyncMqttClient.h>     //https://github.com/marvinroger/async-mqtt-client
+                                   //https://github.com/me-no-dev/ESPAsyncTCP
   #ifdef ENABLE_HOMEASSISTANT
     #include <ArduinoJson.h>
   #endif
@@ -88,14 +88,16 @@ ESP8266HTTPUpdateServer httpUpdater;
 // ***************************************************************************
 // Load libraries / Instanciate WS2812FX library
 // ***************************************************************************
-// https://github.com/kitesurfer1404/WS2812FX
-#include "WS2812FX.h"
+
+#include <WS2812FX.h>              // https://github.com/kitesurfer1404/WS2812FX
 
   #ifdef RGBW
     WS2812FX strip = WS2812FX(NUMLEDS, PIN, NEO_GRBW + NEO_KHZ800);
   #else
     WS2812FX strip = WS2812FX(NUMLEDS, PIN, NEO_GRB + NEO_KHZ800);
   #endif
+
+const uint8_t ws2812fx_options = SIZE_XLARGE + FADE_XSLOW; // WS2812FX setSegment OPTIONS, see: https://github.com/kitesurfer1404/WS2812FX/blob/master/extras/WS2812FX%20Users%20Guide.md
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = Arduino pin number (most are valid)
@@ -316,9 +318,11 @@ DBG_OUTPUT_PORT.println("Starting....");
     strip.setCustomShow(DMA_Show);
   #endif
   strip.setBrightness(brightness);
-  strip.setSpeed(convertSpeed(ws2812fx_speed));
+// parameters: index, start, stop, mode, color, speed, options
+  strip.setSegment(0,  0,  NUMLEDS-1, FX_MODE_COMET, hex_colors, convertSpeed(ws2812fx_speed), ws2812fx_options);
+  //strip.setSpeed(convertSpeed(ws2812fx_speed));
   //strip.setMode(FX_MODE_RAINBOW_CYCLE);
-  strip.setColor(main_color.red, main_color.green, main_color.blue, main_color.white);
+  //strip.setColor(main_color.red, main_color.green, main_color.blue, main_color.white);
   strip.start();
 
   // ***************************************************************************
@@ -743,6 +747,25 @@ DBG_OUTPUT_PORT.println("Starting....");
     DBG_OUTPUT_PORT.print("/get_color: ");
     DBG_OUTPUT_PORT.println(rgbcolor);
   });
+  
+  server.on("/get_color2", []() {
+    char rgbcolor[9];
+    snprintf(rgbcolor, sizeof(rgbcolor), "%02X%02X%02X%02X", back_color.white, back_color.red, back_color.green, back_color.blue);
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.send(200, "text/plain", rgbcolor );
+    DBG_OUTPUT_PORT.print("/get_color2: ");
+    DBG_OUTPUT_PORT.println(rgbcolor);
+  });
+
+  server.on("/get_color3", []() {
+    char rgbcolor[9];
+    snprintf(rgbcolor, sizeof(rgbcolor), "%02X%02X%02X%02X", xtra_color.white, xtra_color.red, xtra_color.green, xtra_color.blue);
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.send(200, "text/plain", rgbcolor );
+    DBG_OUTPUT_PORT.print("/get_color3: ");
+    DBG_OUTPUT_PORT.println(rgbcolor);
+  });
+
 
   server.on("/status", []() {
     getStatusJSON();
@@ -1034,13 +1057,13 @@ DBG_OUTPUT_PORT.println("Starting....");
   
   #ifdef ENABLE_STATE_SAVE_EEPROM
     // Load state string from EEPROM
-    String saved_state_string = readEEPROM(256, 36);
+    String saved_state_string = readEEPROM(256, 66);
     String chk = getValue(saved_state_string, '|', 0);
     if (chk == "STA") {
       DBG_OUTPUT_PORT.printf("Found saved state: %s\n", saved_state_string.c_str());
       setModeByStateString(saved_state_string);
     }
-    sprintf(last_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, ws2812fx_mode, ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white);
+    sprintf(last_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
   #endif
   
   #ifdef ENABLE_BUTTON_GY33
@@ -1108,8 +1131,22 @@ void loop() {
     if(strip.isRunning()) strip.stop(); //should clear memory
     // mode = HOLD;
   }
+  
+  #ifdef ENABLE_TV
+    if (mode == TV) {
+      if(!strip.isRunning()) strip.start();
+      tv();
+    }
+  #endif
+  
+  #ifdef ENABLE_E131
+    if (mode == E131) {
+      handleE131();
+    }
+  #endif
+  
   if (mode == SETCOLOR) {
-    strip.setColor(main_color.red, main_color.green, main_color.blue, main_color.white);
+    strip.setColors(0, hex_colors);
     mode = (prevmode == SET_MODE) ? SETSPEED : prevmode;
     if (mode == HOLD) strip.trigger();
   }
@@ -1125,7 +1162,6 @@ void loop() {
   }
   #ifdef ENABLE_LEGACY_ANIMATIONS
     if (mode == WIPE) {
-      //strip.setColor(main_color.red, main_color.green, main_color.blue, main_color.white);
       strip.setMode(FX_MODE_COLOR_WIPE);
       strip.trigger();
       mode = HOLD;
@@ -1141,13 +1177,11 @@ void loop() {
       mode = HOLD;
     }
     if (mode == THEATERCHASE) {
-      //strip.setColor(main_color.red, main_color.green, main_color.blue, main_color.white);
       strip.setMode(FX_MODE_THEATER_CHASE);
       strip.trigger();
       mode = HOLD;
     }
     if (mode == TWINKLERANDOM) {
-      //strip.setColor(main_color.red, main_color.green, main_color.blue, main_color.white);
       strip.setMode(FX_MODE_TWINKLE_RANDOM);
       strip.trigger();
       mode = HOLD;
@@ -1159,29 +1193,16 @@ void loop() {
     }
   #endif
   
-  #ifdef ENABLE_E131
-    if (mode == E131) {
-      handleE131();
-    }
-  #endif
-
   if (mode == HOLD || mode == CUSTOM) {
-    if(!strip.isRunning()) strip.start();
     #ifdef ENABLE_TV
       if (exit_func) {
         exit_func = false;
       }
     #endif
+    if(!strip.isRunning()) strip.start();
     if (prevmode == SET_MODE) prevmode = HOLD;
   }
   
-  #ifdef ENABLE_TV
-    if (mode == TV) {
-      if(!strip.isRunning()) strip.start();
-      tv();
-    }
-  #endif
-
   // Only for modes with WS2812FX functionality
   #ifdef ENABLE_TV
   if (mode != TV && mode != CUSTOM) {
@@ -1199,7 +1220,7 @@ void loop() {
 
   #ifdef ENABLE_STATE_SAVE_EEPROM
     // Check for state changes
-    sprintf(current_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white);
+    sprintf(current_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
 
     if (strcmp(current_state, last_state) != 0) {
       // DBG_OUTPUT_PORT.printf("STATE CHANGED: %s / %s\n", last_state, current_state);
@@ -1210,7 +1231,7 @@ void loop() {
     if (state_save_requested && time_statechange + timeout_statechange_save <= millis()) {
       time_statechange = 0;
       state_save_requested = false;
-      writeEEPROM(256, 36, last_state); // 256 --> last_state (reserved 36 bytes)
+      writeEEPROM(256, 66, last_state); // 256 --> last_state (reserved 66 bytes)
       EEPROM.commit();
     }
   #endif

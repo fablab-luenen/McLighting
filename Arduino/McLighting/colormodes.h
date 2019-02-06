@@ -55,7 +55,8 @@ void tv() {
 		if(currentMillis-previousMillis > interval) 
 		{
 			previousMillis = currentMillis;
-			interval = random(750,4001);//Adjusts the interval for more/less frequent random light changes
+			//interval = random(750,4001);//Adjusts the interval for more/less frequent random light changes
+			interval = random(1000-(ws2812fx_speed*2),5001-(ws2812fx_speed*8));
 			twitch = random(40,100);// Twitch provides motion effect but can be a bit much if too high
 			dipCount = dipCount++;
 		}

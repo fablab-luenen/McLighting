@@ -4,13 +4,13 @@
 
 // Neopixel
 #define PIN 3             // PIN (15 / D8) where neopixel / WS2811 strip is attached 
-#define NUMLEDS 144        // Number of leds in the strip 
+#define NUMLEDS 194        // Number of leds in the strip 
 #define BUILTIN_LED 2      // ESP-12F has the built in LED on GPIO2, see https://github.com/esp8266/Arduino/issues/2192
 #define BUTTON  14         // Input pin (14 / D5) for switching the LED strip on / off, connect this PIN to ground to trigger button.
 #define BUTTON_GY33 12     // Input pin (12 / D6) for read color data with RGB sensor, connect this PIN to ground to trigger button.
 #define RGBW               // If defined, use RGBW Strips
 
-const char HOSTNAME[] = "McLightingRGBW";   // Friedly hostname
+const char HOSTNAME[] = "McLightingRGBW_02";   // Friedly hostname
 
 #define HTTP_OTA             // If defined, enable ESP8266HTTPUpdateServer OTA code.
 //#define ENABLE_OTA         // If defined, enable Arduino OTA code.
@@ -18,7 +18,7 @@ const char HOSTNAME[] = "McLightingRGBW";   // Friedly hostname
 //#define ENABLE_MQTT        // If defined, enable MQTT client code, see: https://github.com/toblum/McLighting/wiki/MQTT-API
 //#define ENABLE_HOMEASSISTANT // If defined, enable Homeassistant integration, ENABLE_MQTT or ENABLE_AMQTT must be active
 #define ENABLE_BUTTON        // If defined, enable button handling code, see: https://github.com/toblum/McLighting/wiki/Button-control
-//#define ENABLE_BUTTON_GY33   // If defined, enable button handling code for GY-33 color sensor to scan color
+#define ENABLE_BUTTON_GY33   // If defined, enable button handling code for GY-33 color sensor to scan color
 //#define MQTT_HOME_ASSISTANT_SUPPORT // If defined, use AMQTT and select Tools -> IwIP Variant -> Higher Bandwidth
 #define ENABLE_LEGACY_ANIMATIONS // Enable Legacy Animations
 #define ENABLE_E131              // E1.31 implementation You have to uncomment #define USE_WS2812FX_DMA
@@ -56,11 +56,12 @@ const char HOSTNAME[] = "McLightingRGBW";   // Friedly hostname
 #endif
 
 // parameters for automatically cycling favorite patterns
-uint32_t autoParams[][4] = {   // color, speed, mode, duration (seconds)
-  {0xff000000, 120,  1,  5}, // blink red for 5 seconds
-  {0x00ff0000, 120,  3, 10}, // wipe green for 10 seconds
-  {0x0000ff00, 196, 14,  5}, // dual scan blue for 5 seconds
-  {0x0000ff00, 196, 46, 15}  // fireworks for 15 seconds
+uint32_t autoParams[][6] = {   // main_color, back_color, xtra_color, speed, mode, duration (seconds)
+  {0xff000000, 0x00ff0000, 0x00000000, 200,  1,  5}, // blink red/geen for 5 seconds
+  {0x00ff0000, 0x0000ff00, 0x00000000, 200,  3, 10}, // wipe green/blue for 10 seconds
+  {0x0000ff00, 0xff000000, 0x00000000,  60, 14, 10}, // dual scan blue on red for 10 seconds
+  {0x0000ff00, 0xff000000, 0x00000000,  40, 45, 15}, // fireworks blue/red for 15 seconds
+  {0xff000000, 0x00ff0000, 0x0000ff00,  40, 54, 15}  // tricolor chase red/green/blue for 15 seconds
 };
 
 #if defined(ENABLE_MQTT) or defined(ENABLE_AMQTT)
@@ -133,6 +134,7 @@ int ws2812fx_mode = 0;      // Helper variable to set WS2812FX modes
 
 bool shouldSaveConfig = false;  // For WiFiManger custom config
 
+uint32_t hex_colors[3] = {};  // Color array for setting WS2812FX
 struct ledstate             // Data structure to store a state of a single led
 {
   uint8_t red;
@@ -143,16 +145,18 @@ struct ledstate             // Data structure to store a state of a single led
 
 typedef struct ledstate LEDState;     // Define the datatype LEDState
 LEDState ledstates[NUMLEDS];          // Get an array of led states to store the state of the whole strip
-LEDState main_color = { 255, 0, 0, 0 };  // Store the "main color" of the strip used in single color modes
+LEDState main_color = { 255, 0, 0, 0 };   // Store the "main color" of the strip used in single color modes
+LEDState back_color = { 255, 0, 0, 0 };   // Store the "2nd color" of the strip used in single color modes
+LEDState xtra_color = { 255, 0, 0, 0 };   // Store the "3rd color" of the strip used in single color modes
 
 
 #define ENABLE_STATE_SAVE_SPIFFS        // If defined, saves state on SPIFFS
 //#define ENABLE_STATE_SAVE_EEPROM        // If defined, save state on reboot
 
-char beforeauto_state[36];            // Keeps the state representation before auto mode
+char beforeauto_state[66];            // Keeps the state representation before auto mode
 #ifdef ENABLE_STATE_SAVE_EEPROM
-  char current_state[36];               // Keeps the current state representation
-  char last_state[36];                  // Save the last state as string representation
+  char current_state[66];               // Keeps the current state representation
+  char last_state[66];                  // Save the last state as string representation
   unsigned long time_statechange = 0;   // Time when the state last changed
   int timeout_statechange_save = 5000;  // Timeout in ms to wait before state is saved
   bool state_save_requested = false;    // State has to be saved after timeout
@@ -167,10 +171,10 @@ char beforeauto_state[36];            // Keeps the state representation before a
 #endif
 
 #ifdef ENABLE_BUTTON
-  #define BTN_MODE_SHORT  "STA| 1|  0|245|196|  0|  0|  0|255"  // Static white
-  #define BTN_MODE_MEDIUM "STA| 1| 48|245|196|255|102|  0|  0"  // Fire flicker
-  #define BTN_MODE_LONG   "STA| 1| 46|253|196|255|102|  0|  0"  // Fireworks random
-
+//#define BTN_MODE_SHORT  "STA|mo|fxm|  h|  s| r1| g1| b1| w1| r2| g2| b2| w2| r3| g3| b3| w3"   // Example
+  #define BTN_MODE_SHORT  "STA| 1|  0|245|196|  0|  0|  0|255|  0|255|255|  0|  0|255|255|  0"   // Static white
+  #define BTN_MODE_MEDIUM "STA| 1| 48|245|196|255|102|  0|  0|255|255|  0|  0|255|255|  0|  0"    // Fire flicker
+  #define BTN_MODE_LONG   "STA| 1| 46|253|196|255|102|  0|  0|255|255|  0|  0|255|255|  0|  0"  // Fireworks random
   unsigned long keyPrevMillis = 0;
   const unsigned long keySampleIntervalMs = 25;
   byte longKeyPressCountMax = 80;       // 80 * 25 = 2000 ms
