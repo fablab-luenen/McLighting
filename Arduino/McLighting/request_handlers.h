@@ -622,9 +622,11 @@ void handleAutoStart() {
 }
 
 void handleAutoStop() {
-  autoTicker.detach();
-  strip.stop();
-  setModeByStateString(beforeauto_state);
+  if (mode==AUTO) {
+    autoTicker.detach();
+    strip.stop();
+    setModeByStateString(beforeauto_state);
+  }
 }
 
 void Dbg_Prefix(bool mqtt, uint8_t num) {
