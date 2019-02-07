@@ -97,7 +97,7 @@ ESP8266HTTPUpdateServer httpUpdater;
     WS2812FX strip = WS2812FX(NUMLEDS, PIN, NEO_GRB + NEO_KHZ800);
   #endif
 
-const uint8_t ws2812fx_options = SIZE_SMALL + FADE_XSLOW; // WS2812FX setSegment OPTIONS, see: https://github.com/kitesurfer1404/WS2812FX/blob/master/extras/WS2812FX%20Users%20Guide.md
+const uint8_t ws2812fx_options = SIZE_SMALL + FADE_MEDIUM; // WS2812FX setSegment OPTIONS, see: https://github.com/kitesurfer1404/WS2812FX/blob/master/extras/WS2812FX%20Users%20Guide.md
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = Arduino pin number (most are valid)

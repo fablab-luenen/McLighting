@@ -4,13 +4,13 @@
 
 // Neopixel
 #define PIN 3             // PIN (15 / D8) where neopixel / WS2811 strip is attached 
-#define NUMLEDS 194        // Number of leds in the strip 
+#define NUMLEDS 144        // Number of leds in the strip 
 #define BUILTIN_LED 2      // ESP-12F has the built in LED on GPIO2, see https://github.com/esp8266/Arduino/issues/2192
 #define BUTTON  14         // Input pin (14 / D5) for switching the LED strip on / off, connect this PIN to ground to trigger button.
-#define BUTTON_GY33 12     // Input pin (12 / D6) for read color data with RGB sensor, connect this PIN to ground to trigger button.
+//#define BUTTON_GY33 12     // Input pin (12 / D6) for read color data with RGB sensor, connect this PIN to ground to trigger button.
 #define RGBW               // If defined, use RGBW Strips
 
-const char HOSTNAME[] = "McLightingRGBW_02";   // Friedly hostname
+const char HOSTNAME[] = "McLightingRGBW_01";   // Friedly hostname
 
 #define HTTP_OTA             // If defined, enable ESP8266HTTPUpdateServer OTA code.
 //#define ENABLE_OTA         // If defined, enable Arduino OTA code.
@@ -18,7 +18,7 @@ const char HOSTNAME[] = "McLightingRGBW_02";   // Friedly hostname
 //#define ENABLE_MQTT        // If defined, enable MQTT client code, see: https://github.com/toblum/McLighting/wiki/MQTT-API
 //#define ENABLE_HOMEASSISTANT // If defined, enable Homeassistant integration, ENABLE_MQTT or ENABLE_AMQTT must be active
 #define ENABLE_BUTTON        // If defined, enable button handling code, see: https://github.com/toblum/McLighting/wiki/Button-control
-#define ENABLE_BUTTON_GY33   // If defined, enable button handling code for GY-33 color sensor to scan color
+//#define ENABLE_BUTTON_GY33   // If defined, enable button handling code for GY-33 color sensor to scan color
 //#define MQTT_HOME_ASSISTANT_SUPPORT // If defined, use AMQTT and select Tools -> IwIP Variant -> Higher Bandwidth
 #define ENABLE_LEGACY_ANIMATIONS // Enable Legacy Animations
 #define ENABLE_E131              // E1.31 implementation You have to uncomment #define USE_WS2812FX_DMA
@@ -172,9 +172,9 @@ char beforeauto_state[66];            // Keeps the state representation before a
 
 #ifdef ENABLE_BUTTON
 //#define BTN_MODE_SHORT  "STA|mo|fxm|  h|  s| r1| g1| b1| w1| r2| g2| b2| w2| r3| g3| b3| w3"   // Example
-  #define BTN_MODE_SHORT  "STA| 1|  0|245|196|  0|  0|  0|255|  0|255|255|  0|  0|255|255|  0"   // Static white
-  #define BTN_MODE_MEDIUM "STA| 1| 48|245|196|255|102|  0|  0|255|255|  0|  0|255|255|  0|  0"    // Fire flicker
-  #define BTN_MODE_LONG   "STA| 1| 46|253|196|255|102|  0|  0|255|255|  0|  0|255|255|  0|  0"  // Fireworks random
+  #define BTN_MODE_SHORT  "STA| 5|  0|255|196|  0|  0|  0|255|  0|  0|  0|  0|  0|  0|  0|  0"   // Static white
+  #define BTN_MODE_MEDIUM "STA| 5| 48|200|196|255|102|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0"   // Fire flicker
+  #define BTN_MODE_LONG   "STA| 5| 46|200|196|255|102|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0"   // Fireworks random
   unsigned long keyPrevMillis = 0;
   const unsigned long keySampleIntervalMs = 25;
   byte longKeyPressCountMax = 80;       // 80 * 25 = 2000 ms
