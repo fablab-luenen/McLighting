@@ -209,7 +209,7 @@ void handleSetMainColor(uint8_t * mypayload) {
 
 void handleSetBackColor(uint8_t * mypayload) {
   // decode rgb data
-  uint32_t rgb = (uint32_t) strtol((const char *) &mypayload[2], NULL, 16);
+  uint32_t rgb = (uint32_t) strtoul((const char *) &mypayload[2], NULL, 16);
   back_color.white = ((rgb >> 24) & 0xFF);
   back_color.red = ((rgb >> 16) & 0xFF);
   back_color.green = ((rgb >> 8) & 0xFF);
@@ -223,7 +223,7 @@ void handleSetBackColor(uint8_t * mypayload) {
 }
 void handleSetXtraColor(uint8_t * mypayload) {
   // decode rgb data
-  uint32_t rgb = (uint32_t) strtol((const char *) &mypayload[3], NULL, 16);
+  uint32_t rgb = (uint32_t) strtoul((const char *) &mypayload[3], NULL, 16);
   xtra_color.white = ((rgb >> 24) & 0xFF);
   xtra_color.red = ((rgb >> 16) & 0xFF);
   xtra_color.green = ((rgb >> 8) & 0xFF);
@@ -243,6 +243,7 @@ void handleSetAllMode(uint8_t * mypayload) {
   main_color.red = ((rgb >> 16) & 0xFF);
   main_color.green = ((rgb >> 8) & 0xFF);
   main_color.blue = ((rgb >> 0) & 0xFF);
+  convertColors();
   DBG_OUTPUT_PORT.printf("WS: Set all leds to main color: R: [%u] G: [%u] B: [%u] W: [%u]\n", main_color.red, main_color.green, main_color.blue, main_color.white);
   #ifdef ENABLE_TV
     exit_func = true;
