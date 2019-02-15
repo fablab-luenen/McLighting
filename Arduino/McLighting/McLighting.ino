@@ -1,5 +1,6 @@
 #include "definitions.h"
 #include "version.h"
+
 // ***************************************************************************
 // Load libraries for: WebServer / WiFiManager / WebSockets
 // ***************************************************************************
@@ -73,7 +74,11 @@
   ESPAsyncE131 e131(END_UNIVERSE - START_UNIVERSE + 1);
 #endif
 
-
+#ifdef ENABLE_REMOTE
+  #include <IRremoteESP8266.h>       //https://github.com/markszabo/IRremoteESP8266
+  #include <IRrecv.h>
+  #include <IRutils.h>
+#endif
 // ***************************************************************************
 // Instanciate HTTP(80) / WebSockets(81) Server
 // ***************************************************************************
@@ -194,6 +199,12 @@ void tick()
       }
     }
   }
+#endif
+
+#ifdef ENABLE_REMOTE
+  IRrecv irrecv(REMOTE_PIN);
+  decode_results results;
+  
 #endif
 
 // ***************************************************************************
@@ -320,9 +331,6 @@ DBG_OUTPUT_PORT.println("Starting....");
   strip.setBrightness(brightness);
 // parameters: index, start, stop, mode, color, speed, options
   strip.setSegment(0,  0,  NUMLEDS-1, FX_MODE_COMET, hex_colors, convertSpeed(ws2812fx_speed), ws2812fx_options);
-  //strip.setSpeed(convertSpeed(ws2812fx_speed));
-  //strip.setMode(FX_MODE_RAINBOW_CYCLE);
-  //strip.setColor(main_color.red, main_color.green, main_color.blue, main_color.white);
   strip.start();
 
   // ***************************************************************************
@@ -681,7 +689,7 @@ DBG_OUTPUT_PORT.println("Starting....");
   // ***************************************************************************
   server.on("/set_brightness", []() {
     getArgs();
-	mode = BRIGHTNESS;
+	  mode = BRIGHTNESS;
     #ifdef ENABLE_MQTT
     mqtt_client.publish(mqtt_outtopic, String(String("OK %") + String(brightness)).c_str());
     #endif
@@ -691,9 +699,6 @@ DBG_OUTPUT_PORT.println("Starting....");
     #ifdef ENABLE_HOMEASSISTANT
       stateOn = true;
       if(!ha_send_data.active())  ha_send_data.once(5, tickerSendState);
-    #endif
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
     #endif
     getStatusJSON();
   });
@@ -707,21 +712,17 @@ DBG_OUTPUT_PORT.println("Starting....");
   });
 
   server.on("/set_speed", []() {
-    if (server.arg("d").toInt() >= 0) {
-      ws2812fx_speed = server.arg("d").toInt();
-      ws2812fx_speed = constrain(ws2812fx_speed, 0, 255);
-      strip.setSpeed(convertSpeed(ws2812fx_speed));
-      #ifdef ENABLE_MQTT
+    getArgs();
+    mode = SETSPEED;
+    #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String(String("OK ?") + String(ws2812fx_speed)).c_str());
-      #endif
-      #ifdef ENABLE_AMQTT
+    #endif
+    #ifdef ENABLE_AMQTT
       amqttClient.publish(mqtt_outtopic.c_str(), qospub, false, String(String("OK ?") + String(ws2812fx_speed)).c_str());
-      #endif
-      #ifdef ENABLE_HOMEASSISTANT
-        if(!ha_send_data.active())  ha_send_data.once(5, tickerSendState);
-      #endif
-    }
-
+    #endif
+    #ifdef ENABLE_HOMEASSISTANT
+      if(!ha_send_data.active())  ha_send_data.once(5, tickerSendState);
+    #endif
     getStatusJSON();
   });
 
@@ -787,16 +788,13 @@ DBG_OUTPUT_PORT.println("Starting....");
     #ifdef ENABLE_HOMEASSISTANT
       stateOn = false;
     #endif
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-    #endif
   });
 
     server.on("/auto", []() {
     #ifdef ENABLE_TV
       exit_func = true;
     #endif
-    mode = AUTO;
+    handleAutoStart();
     getArgs();
     getStatusJSON();
     #ifdef ENABLE_MQTT
@@ -807,9 +805,6 @@ DBG_OUTPUT_PORT.println("Starting....");
     #endif
     #ifdef ENABLE_HOMEASSISTANT
       stateOn = false;
-    #endif
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
     #endif
   });
 
@@ -831,9 +826,6 @@ DBG_OUTPUT_PORT.println("Starting....");
     #ifdef ENABLE_HOMEASSISTANT
       stateOn = true;
     #endif
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-    #endif
   });
 
   #ifdef ENABLE_LEGACY_ANIMATIONS
@@ -853,9 +845,6 @@ DBG_OUTPUT_PORT.println("Starting....");
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
       #endif
-      #ifdef ENABLE_STATE_SAVE_SPIFFS
-        if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-      #endif
     });
   
     server.on("/rainbow", []() {
@@ -873,9 +862,6 @@ DBG_OUTPUT_PORT.println("Starting....");
       #endif
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
-      #endif
-      #ifdef ENABLE_STATE_SAVE_SPIFFS
-        if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
       #endif
     });
   
@@ -895,9 +881,6 @@ DBG_OUTPUT_PORT.println("Starting....");
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
       #endif
-      #ifdef ENABLE_STATE_SAVE_SPIFFS
-        if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-      #endif
     });
   
     server.on("/theaterchase", []() {
@@ -915,9 +898,6 @@ DBG_OUTPUT_PORT.println("Starting....");
       #endif
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
-      #endif
-      #ifdef ENABLE_STATE_SAVE_SPIFFS
-        if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
       #endif
     });
   
@@ -937,9 +917,6 @@ DBG_OUTPUT_PORT.println("Starting....");
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
       #endif
-      #ifdef ENABLE_STATE_SAVE_SPIFFS
-        if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-      #endif
     });
     
     server.on("/theaterchaseRainbow", []() {
@@ -957,9 +934,6 @@ DBG_OUTPUT_PORT.println("Starting....");
       #endif
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
-      #endif
-      #ifdef ENABLE_STATE_SAVE_SPIFFS
-        if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
       #endif
     });
   #endif
@@ -980,9 +954,6 @@ DBG_OUTPUT_PORT.println("Starting....");
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
       #endif
-      #ifdef ENABLE_STATE_SAVE_SPIFFS
-        if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-      #endif
     });
   #endif
   
@@ -1000,9 +971,6 @@ DBG_OUTPUT_PORT.println("Starting....");
       #endif
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
-      #endif
-      #ifdef ENABLE_STATE_SAVE_SPIFFS
-        if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
       #endif
     });
   #endif
@@ -1026,9 +994,6 @@ DBG_OUTPUT_PORT.println("Starting....");
       stateOn = true;
       if(!ha_send_data.active())  ha_send_data.once(5, tickerSendState);
     #endif
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-    #endif
   });
 
   #ifdef HTTP_OTA
@@ -1046,9 +1011,9 @@ DBG_OUTPUT_PORT.println("Starting....");
   // Choose one to begin listening for E1.31 data
   // if (e131.begin(E131_UNICAST))                             // Listen via Unicast
   if (e131.begin(E131_MULTICAST, START_UNIVERSE, END_UNIVERSE)) // Listen via Multicast
-      Serial.println(F("Listening for data..."));
+      DBG_OUTPUT_PORT.println(F("Listening for data..."));
   else
-      Serial.println(F("*** e131.begin failed ***"));
+      DBG_OUTPUT_PORT.println(F("*** e131.begin failed ***"));
   #endif
   
   #ifdef ENABLE_STATE_SAVE_SPIFFS
@@ -1070,6 +1035,10 @@ DBG_OUTPUT_PORT.println("Starting....");
     tcs.setConfig(MCU_LED_06, MCU_WHITE_ON);
 //    delay(2000);
 //    tcs.setConfig(MCU_LED_OFF, MCU_WHITE_OFF);
+  #endif
+
+  #ifdef ENABLE_REMOTE
+    irrecv.enableIRIn();  // Start the receiver
   #endif
 }
 
@@ -1120,20 +1089,18 @@ void loop() {
   #endif
           
   // Simple statemachine that handles the different modes
-  if (mode == SET_MODE) {
-    DBG_OUTPUT_PORT.printf("SET_MODE: %d %d\n", ws2812fx_mode, mode);
-    strip.setMode(ws2812fx_mode);
-    //strip.trigger(); // is done later anyway, why do it more than once?
-    prevmode = SET_MODE;
-    mode = SETCOLOR;
-  }
   if (mode == OFF) {
     if(strip.isRunning()) strip.stop(); //should clear memory
-    // mode = HOLD;
+  #ifdef ENABLE_STATE_SAVE_SPIFFS
+    if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
+  #endif
   }
   
   #ifdef ENABLE_TV
     if (mode == TV) {
+  #ifdef ENABLE_STATE_SAVE_SPIFFS
+    if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
+  #endif
       if(!strip.isRunning()) strip.start();
       tv();
     }
@@ -1141,55 +1108,92 @@ void loop() {
   
   #ifdef ENABLE_E131
     if (mode == E131) {
+  #ifdef ENABLE_STATE_SAVE_SPIFFS
+    if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
+  #endif      
       handleE131();
     }
   #endif
-  
+  if (mode == SET_MODE) {
+    DBG_OUTPUT_PORT.printf("SET_MODE: %d %d\n", ws2812fx_mode, mode);
+    strip.setMode(ws2812fx_mode);
+    //strip.trigger(); // is done later anyway, why do it more than once?
+    prevmode = SET_MODE;
+    mode = SETCOLOR;
+  }  
   if (mode == SETCOLOR) {
+    convertColors();
     strip.setColors(0, hex_colors);
     mode = (prevmode == SET_MODE) ? SETSPEED : prevmode;
     if (mode == HOLD) strip.trigger();
+  #ifdef ENABLE_STATE_SAVE_SPIFFS
+    if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
+  #endif
   }
   if (mode == SETSPEED) {
     strip.setSpeed(convertSpeed(ws2812fx_speed));
     mode = (prevmode == SET_MODE) ? BRIGHTNESS : prevmode;
     if (mode == HOLD) strip.trigger();
+  #ifdef ENABLE_STATE_SAVE_SPIFFS
+    if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
+  #endif
   }
   if (mode == BRIGHTNESS) {
     strip.setBrightness(brightness);
     mode = (prevmode == SET_MODE) ? HOLD : prevmode;
     if (mode == HOLD) strip.trigger();
+  #ifdef ENABLE_STATE_SAVE_SPIFFS
+    if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
+  #endif
   }
   #ifdef ENABLE_LEGACY_ANIMATIONS
     if (mode == WIPE) {
       strip.setMode(FX_MODE_COLOR_WIPE);
       strip.trigger();
       mode = HOLD;
+    #ifdef ENABLE_STATE_SAVE_SPIFFS
+      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
+    #endif
     }
     if (mode == RAINBOW) {
       strip.setMode(FX_MODE_RAINBOW);
       strip.trigger();
       mode = HOLD;
+    #ifdef ENABLE_STATE_SAVE_SPIFFS
+      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
+    #endif
     }
     if (mode == RAINBOWCYCLE) {
       strip.setMode(FX_MODE_RAINBOW_CYCLE);
       strip.trigger();
       mode = HOLD;
+    #ifdef ENABLE_STATE_SAVE_SPIFFS
+      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
+    #endif
     }
     if (mode == THEATERCHASE) {
       strip.setMode(FX_MODE_THEATER_CHASE);
       strip.trigger();
       mode = HOLD;
+    #ifdef ENABLE_STATE_SAVE_SPIFFS
+      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
+    #endif
     }
     if (mode == TWINKLERANDOM) {
       strip.setMode(FX_MODE_TWINKLE_RANDOM);
       strip.trigger();
       mode = HOLD;
+    #ifdef ENABLE_STATE_SAVE_SPIFFS
+      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
+    #endif
     }
     if (mode == THEATERCHASERAINBOW) {
       strip.setMode(FX_MODE_THEATER_CHASE_RAINBOW);
       strip.trigger();
       mode = HOLD;
+    #ifdef ENABLE_STATE_SAVE_SPIFFS
+      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
+    #endif
     }
   #endif
   
@@ -1233,6 +1237,350 @@ void loop() {
       state_save_requested = false;
       writeEEPROM(256, 66, last_state); // 256 --> last_state (reserved 66 bytes)
       EEPROM.commit();
+    }
+  #endif
+
+  #ifdef ENABLE_REMOTE
+    if (irrecv.decode(&results)) {
+      DBG_OUTPUT_PORT.print("IR Code: 0x");
+      DBG_OUTPUT_PORT.print(uint64ToString(results.value, HEX));
+      DBG_OUTPUT_PORT.println("");
+      if (results.value == rmt_commands[REPEATCMD]) { //Repeat
+        results.value = last_remote_cmd;
+        chng = 5;
+      } else {
+        chng = 1;       
+      }
+      if (results.value == rmt_commands[ON_OFF]) {   // ON/OFF TOGGLE
+        last_remote_cmd = 0;
+        if (mode == OFF) {
+            setModeByStateString(beforeoffauto_state);
+        } else {
+          if (mode == AUTO) {
+            handleAutoStop();
+          } else {
+#ifdef ENABLE_TV
+            exit_func = true;
+#endif
+            sprintf(beforeoffauto_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
+          }
+          mode = OFF;
+        }
+      }
+      if (results.value == rmt_commands[BRIGHTNESS_UP]) { //Brightness Up
+        last_remote_cmd = results.value;
+        if (brightness + chng <= 255) {
+          brightness = brightness + chng;
+          prevmode = mode;
+          mode = BRIGHTNESS;
+        }
+      }
+      if (results.value == rmt_commands[BRIGHTNESS_DOWN]) { //Brightness down
+        last_remote_cmd = results.value;
+        if (brightness - chng >= 0) {
+          brightness = brightness - chng;
+          prevmode = mode;
+          mode = BRIGHTNESS;
+        }
+      }
+      if (results.value == rmt_commands[SPEED_UP]) { //Speed Up
+        last_remote_cmd = results.value;
+        if (ws2812fx_speed + chng <= 255) {
+          ws2812fx_speed = ws2812fx_speed + chng;
+          prevmode = mode;
+          mode = SETSPEED;
+        }
+      }
+      if (results.value == rmt_commands[SPEED_DOWN]) { //Speed down
+        last_remote_cmd = results.value;
+        if (ws2812fx_speed - chng >= 0) {
+          ws2812fx_speed = ws2812fx_speed - chng;
+          prevmode = mode;
+          mode = SETSPEED;
+        }
+      }
+      if (mode == HOLD) {
+        if (results.value == rmt_commands[RED_UP]) { //Red Up
+          last_remote_cmd = results.value;
+          if (selected_color == 1) {
+            if (main_color.red + chng <= 255) {
+              main_color.red = main_color.red + chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+          if (selected_color == 2) {
+            if (back_color.red + chng <= 255) {
+              back_color.red = back_color.red + chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+          if (selected_color == 3) {
+            if (xtra_color.red + chng <= 255) {
+              xtra_color.red = xtra_color.red + chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+        }
+        if (results.value == rmt_commands[RED_DOWN]) { //Red down
+          last_remote_cmd = results.value;
+          if (selected_color == 1) {
+            if (main_color.red - chng >= 0) {
+              main_color.red = main_color.red - chng;
+              prevmode = mode;
+              mode = SETCOLOR; 
+            }
+          }
+          if (selected_color == 2) {
+            if (back_color.red - chng >= 0) {
+              back_color.red = back_color.red - chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+          if (selected_color == 3) {
+            if (xtra_color.red - chng >= 0) {
+              xtra_color.red = xtra_color.red - chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+        }
+        if (results.value == rmt_commands[GREEN_UP]) { //Green Up
+          last_remote_cmd = results.value;
+          if (selected_color == 1) {
+            if (main_color.green + chng <= 255) {
+              main_color.green = main_color.green + chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+          if (selected_color == 2) {
+            if (back_color.green + chng <= 255) {
+              back_color.green = back_color.green + chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+          if (selected_color == 3) {
+            if (xtra_color.green + chng <= 255) {
+              xtra_color.green = xtra_color.green + chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+        }
+        if (results.value == rmt_commands[GREEN_DOWN]) { //green down
+          last_remote_cmd = results.value;
+          if (selected_color == 1) {
+            if (main_color.green - chng >= 0) {
+              main_color.green = main_color.green - chng;;
+              prevmode = mode;
+              mode = SETCOLOR; 
+            }
+          }
+          if (selected_color == 2) {
+            if (back_color.green - chng >= 0) {
+              back_color.green = back_color.green - chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+          if (selected_color == 3) {
+            if (xtra_color.green - chng >= 0) {
+              xtra_color.green = xtra_color.green - chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+        }
+        if (results.value == rmt_commands[BLUE_UP]) { //Blue Up
+          last_remote_cmd = results.value;
+          if (selected_color == 1) {
+            if (main_color.blue + chng <= 255) {
+              main_color.blue = main_color.blue + chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+          if (selected_color == 2) {
+            if (back_color.blue + chng <= 255) {
+              back_color.blue = back_color.blue + chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+          if (selected_color == 3) {
+            if (xtra_color.blue + chng <= 255) {
+              xtra_color.blue = xtra_color.blue + chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+        }
+        if (results.value == rmt_commands[BLUE_DOWN]) { //BLUE down
+          last_remote_cmd = results.value;
+          if (selected_color == 1) {
+            if (main_color.blue - chng >= 0) {
+              main_color.blue = main_color.blue - chng;
+              prevmode = mode;
+              mode = SETCOLOR; 
+            }
+          }
+          if (selected_color == 2) {
+            if (back_color.blue - chng >= 0) {
+              back_color.blue = back_color.blue - chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+          if (selected_color == 3) {
+            if (xtra_color.blue - chng >= 0) {
+              xtra_color.blue = xtra_color.blue - chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+        }
+        if (results.value == rmt_commands[WHITE_UP]) { //White Up
+          last_remote_cmd = results.value;
+          if (selected_color == 1) {
+            if (main_color.white + chng <= 255) {
+              main_color.white = main_color.white + chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+          if (selected_color == 2) {
+            if (back_color.white + chng <= 255) {
+              back_color.white = back_color.white + chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+          if (selected_color == 3) {
+            if (xtra_color.white + chng <= 255) {
+              xtra_color.white = xtra_color.white + chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+        }
+        if (results.value == rmt_commands[WHITE_DOWN]) { //White down
+          last_remote_cmd = results.value;
+          if (selected_color == 1) {
+            if (main_color.white - chng >= 0) {
+              main_color.white = main_color.white - chng;
+              prevmode = mode;
+              mode = SETCOLOR; 
+            }
+          }
+          if (selected_color == 2) {
+            if (back_color.white - chng >= 0) {
+              back_color.white = back_color.white - chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+          if (selected_color == 3) {
+            if (xtra_color.white - chng >= 0) {
+              xtra_color.white = xtra_color.white - chng;
+              prevmode = mode;
+              mode = SETCOLOR;
+            }
+          }
+        }
+        if (results.value == rmt_commands[MODE_UP]) { //Mode Up
+          last_remote_cmd = results.value;
+          if (ws2812fx_mode < strip.getModeCount()-1) {
+            ws2812fx_mode = ws2812fx_mode + 1;
+            mode = SET_MODE;
+          }
+        }
+        if (results.value == rmt_commands[MODE_DOWN]) { //Mode down
+          last_remote_cmd = results.value;
+          if (ws2812fx_mode > 0) {
+            ws2812fx_mode = ws2812fx_mode - 1;
+            mode = SET_MODE;
+          }
+        }
+        if (results.value == rmt_commands[COL_M]) { // Select Main Color
+          last_remote_cmd = 0;
+          selected_color = 1;
+        } 
+        if (results.value == rmt_commands[COL_B]) { // Select Back Color
+          last_remote_cmd = 0;
+          selected_color = 2;
+        } 
+        if (results.value == rmt_commands[COL_X]) { // Select Extra Color
+          last_remote_cmd = 0;
+          selected_color = 3;
+        }
+      }
+      if (results.value == rmt_commands[AUTOMODE]) { // Toggle Automode
+        last_remote_cmd = 0;
+        if (mode != AUTO) {
+            handleAutoStart();
+        } else {
+            handleAutoStop();
+        }
+      }
+    #ifdef ENABLE_TV
+      if (results.value == rmt_commands[CUST_1]) { // Select TV Mode
+        if (mode == TV) {
+          exit_func = true;
+          mode = HOLD;
+        } else {
+          if (mode==AUTO) {
+            handleAutoStop();
+          }
+          mode = TV;
+        }  
+      }
+    #endif 
+      if (results.value == rmt_commands[CUST_2]) { // Select Custom Mode 2
+        #ifdef ENABLE_TV
+          exit_func = true;
+        #endif
+        if (mode==AUTO) {
+          handleAutoStop();
+        }
+        ws2812fx_mode = 12;
+        mode = SET_MODE;
+      } 
+      if (results.value == rmt_commands[CUST_3]) { // Select Custom Mode 3
+        #ifdef ENABLE_TV
+          exit_func = true;
+        #endif
+        if (mode==AUTO) {
+          handleAutoStop();
+        }
+        ws2812fx_mode = 48;
+        mode = SET_MODE;
+      } 
+      if (results.value == rmt_commands[CUST_4]) { // Select Custom Mode 4
+        #ifdef ENABLE_TV
+          exit_func = true;
+        #endif
+        if (mode==AUTO) {
+          handleAutoStop();
+        }
+        ws2812fx_mode = 21;
+        mode = SET_MODE; 
+      }
+      if (results.value == rmt_commands[CUST_5]) { // Select Custom Mode 5
+        #ifdef ENABLE_TV
+          exit_func = true;
+        #endif
+        if (mode==AUTO) {
+          handleAutoStop();
+        }
+        ws2812fx_mode = 46;
+        mode = SET_MODE;
+      } 
+      irrecv.resume();  // Receive the next value
     }
   #endif
 }

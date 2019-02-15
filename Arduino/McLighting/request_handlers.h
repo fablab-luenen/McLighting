@@ -198,7 +198,6 @@ void handleSetMainColor(uint8_t * mypayload) {
   main_color.red = ((rgb >> 16) & 0xFF);
   main_color.green = ((rgb >> 8) & 0xFF);
   main_color.blue = ((rgb >> 0) & 0xFF);
-  convertColors();
 //  strip.setColor(main_color.red, main_color.green, main_color.blue);
   #ifdef ENABLE_TV
     exit_func = true;
@@ -214,7 +213,6 @@ void handleSetBackColor(uint8_t * mypayload) {
   back_color.red = ((rgb >> 16) & 0xFF);
   back_color.green = ((rgb >> 8) & 0xFF);
   back_color.blue = ((rgb >> 0) & 0xFF);
-  convertColors();
   #ifdef ENABLE_TV
     exit_func = true;
   #endif
@@ -228,7 +226,6 @@ void handleSetXtraColor(uint8_t * mypayload) {
   xtra_color.red = ((rgb >> 16) & 0xFF);
   xtra_color.green = ((rgb >> 8) & 0xFF);
   xtra_color.blue = ((rgb >> 0) & 0xFF);
-  convertColors();
   #ifdef ENABLE_TV
     exit_func = true;
   #endif
@@ -243,7 +240,6 @@ void handleSetAllMode(uint8_t * mypayload) {
   main_color.red = ((rgb >> 16) & 0xFF);
   main_color.green = ((rgb >> 8) & 0xFF);
   main_color.blue = ((rgb >> 0) & 0xFF);
-  convertColors();
   DBG_OUTPUT_PORT.printf("WS: Set all leds to main color: R: [%u] G: [%u] B: [%u] W: [%u]\n", main_color.red, main_color.green, main_color.blue, main_color.white);
   #ifdef ENABLE_TV
     exit_func = true;
@@ -331,6 +327,9 @@ void handleRangeDifferentColors(uint8_t * mypayload) {
 }
 
 void setModeByStateString(String saved_state_string) {
+#ifdef ENABLE_TV
+    exit_func = true;
+#endif  
   String str_mode = getValue(saved_state_string, '|', 1);
   mode = static_cast<MODE>(str_mode.toInt());
   String str_ws2812fx_mode = getValue(saved_state_string, '|', 2);
@@ -385,6 +384,7 @@ void setModeByStateString(String saved_state_string) {
   strip.setSpeed(convertSpeed(ws2812fx_speed));
   strip.setBrightness(brightness);
   strip.setColors(0, hex_colors);
+  strip.trigger();
 }
 
 void handleSetNamedMode(String str_mode) {
@@ -614,7 +614,7 @@ void handleAutoStart() {
     #ifdef ENABLE_TV
       exit_func = true;
     #endif
-    sprintf(beforeauto_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
+    sprintf(beforeoffauto_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
     mode = AUTO;
     autoCount = 0;
     autoTick();
@@ -626,7 +626,7 @@ void handleAutoStop() {
   if (mode==AUTO) {
     autoTicker.detach();
     strip.stop();
-    setModeByStateString(beforeauto_state);
+    setModeByStateString(beforeoffauto_state);
   }
 }
 
@@ -661,9 +661,6 @@ void checkpayload(uint8_t * payload, bool mqtt = false, uint8_t num = 0) {
     #ifdef ENABLE_HOMEASSISTANT
       stateOn = true;
       if(!ha_send_data.active())  ha_send_data.once(5, tickerSendState);
-    #endif
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
     #endif
   }
 
@@ -1082,7 +1079,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         xtra_color.green = (uint8_t) color["g3"];
         xtra_color.blue = (uint8_t) color["b3"];
 		    xtra_color.white = (uint8_t) color["w3"];
-        convertColors();
         prevmode = mode;
         mode = SETCOLOR;
       }
@@ -1102,7 +1098,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         color_temp = (uint16_t) root["color_temp"];
         unsigned int kelvin  = 1000000 / color_temp;
         main_color = temp2rgb(kelvin);
-        convertColors();
         prevmode = mode;
         mode = SETCOLOR;
       }

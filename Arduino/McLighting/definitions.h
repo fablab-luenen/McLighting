@@ -8,6 +8,7 @@
 #define BUILTIN_LED 2      // ESP-12F has the built in LED on GPIO2, see https://github.com/esp8266/Arduino/issues/2192
 #define BUTTON  14         // Input pin (14 / D5) for switching the LED strip on / off, connect this PIN to ground to trigger button.
 //#define BUTTON_GY33 12     // Input pin (12 / D6) for read color data with RGB sensor, connect this PIN to ground to trigger button.
+#define REMOTE_PIN 13          // Input pin (13 / D7) for TSOP31238 Out
 #define RGBW               // If defined, use RGBW Strips
 
 const char HOSTNAME[] = "McLightingRGBW_01";   // Friedly hostname
@@ -19,6 +20,7 @@ const char HOSTNAME[] = "McLightingRGBW_01";   // Friedly hostname
 //#define ENABLE_HOMEASSISTANT // If defined, enable Homeassistant integration, ENABLE_MQTT or ENABLE_AMQTT must be active
 #define ENABLE_BUTTON        // If defined, enable button handling code, see: https://github.com/toblum/McLighting/wiki/Button-control
 //#define ENABLE_BUTTON_GY33   // If defined, enable button handling code for GY-33 color sensor to scan color
+//#define ENABLE_REMOTE        // If defined, enable Remote Control via TSOP31238
 //#define MQTT_HOME_ASSISTANT_SUPPORT // If defined, use AMQTT and select Tools -> IwIP Variant -> Higher Bandwidth
 #define ENABLE_LEGACY_ANIMATIONS // Enable Legacy Animations
 #define ENABLE_E131              // E1.31 implementation You have to uncomment #define USE_WS2812FX_DMA
@@ -29,6 +31,14 @@ const char HOSTNAME[] = "McLightingRGBW_01";   // Friedly hostname
   #define END_UNIVERSE 2              // Total number of Universes to listen for, starting at UNIVERSE
 #endif
 
+#ifdef ENABLE_REMOTE
+  int  selected_color = 1;
+  int  chng = 1;
+  uint64_t last_remote_cmd;
+  enum                     RMT_BTN {ON_OFF,    MODE_UP, MODE_DOWN,   RED_UP, RED_DOWN, GREEN_UP, GREEN_DOWN,  BLUE_UP, BLUE_DOWN, WHITE_UP, WHITE_DOWN, BRIGHTNESS_UP, BRIGHTNESS_DOWN, SPEED_UP, SPEED_DOWN,    COL_M,    COL_B,    COL_X, AUTOMODE,    CUST_1,   CUST_2,    CUST_3,   CUST_4,   CUST_5,          REPEATCMD, BTN_CNT};
+  // Change your IR Commands here. You can see them in console, after you pressed a button on the remote
+  uint64_t rmt_commands[BTN_CNT] = {0xF7C03F, 0xF7708F,  0xF7F00F, 0xF720DF, 0xF710EF, 0xF7A05F,   0xF7906F, 0xF7609F,  0xF750AF, 0xF7E01F,   0xF7D02F,      0xF730CF,        0xF7B04F, 0xF748B7,   0xF7C837, 0xF700FF, 0xF7807F, 0xF740BF, 0xF708F7,  0xF78877, 0xF728D7,  0xF7A857, 0xF76897, 0xF7E817, 0xFFFFFFFFFFFFFFFF};
+#endif
 //#define WIFIMGR_PORTAL_TIMEOUT 180
 //#define WIFIMGR_SET_MANUAL_IP
 
@@ -146,14 +156,14 @@ struct ledstate             // Data structure to store a state of a single led
 typedef struct ledstate LEDState;     // Define the datatype LEDState
 LEDState ledstates[NUMLEDS];          // Get an array of led states to store the state of the whole strip
 LEDState main_color = { 255, 0, 0, 0 };   // Store the "main color" of the strip used in single color modes
-LEDState back_color = { 255, 0, 0, 0 };   // Store the "2nd color" of the strip used in single color modes
-LEDState xtra_color = { 255, 0, 0, 0 };   // Store the "3rd color" of the strip used in single color modes
+LEDState back_color = {   0, 0, 0, 0 };   // Store the "2nd color" of the strip used in single color modes
+LEDState xtra_color = {   0, 0, 0, 0 };   // Store the "3rd color" of the strip used in single color modes
 
 
 #define ENABLE_STATE_SAVE_SPIFFS        // If defined, saves state on SPIFFS
 //#define ENABLE_STATE_SAVE_EEPROM        // If defined, save state on reboot
 
-char beforeauto_state[66];            // Keeps the state representation before auto mode
+char beforeoffauto_state[66];            // Keeps the state representation before auto mode
 #ifdef ENABLE_STATE_SAVE_EEPROM
   char current_state[66];               // Keeps the current state representation
   char last_state[66];                  // Save the last state as string representation
