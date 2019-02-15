@@ -20,7 +20,7 @@ const char HOSTNAME[] = "McLightingRGBW_01";   // Friedly hostname
 //#define ENABLE_HOMEASSISTANT // If defined, enable Homeassistant integration, ENABLE_MQTT or ENABLE_AMQTT must be active
 #define ENABLE_BUTTON        // If defined, enable button handling code, see: https://github.com/toblum/McLighting/wiki/Button-control
 //#define ENABLE_BUTTON_GY33   // If defined, enable button handling code for GY-33 color sensor to scan color
-//#define ENABLE_REMOTE        // If defined, enable Remote Control via TSOP31238
+#define ENABLE_REMOTE        // If defined, enable Remote Control via TSOP31238
 //#define MQTT_HOME_ASSISTANT_SUPPORT // If defined, use AMQTT and select Tools -> IwIP Variant -> Higher Bandwidth
 #define ENABLE_LEGACY_ANIMATIONS // Enable Legacy Animations
 #define ENABLE_E131              // E1.31 implementation You have to uncomment #define USE_WS2812FX_DMA

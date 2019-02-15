@@ -1529,6 +1529,7 @@ void loop() {
       }
     #ifdef ENABLE_TV
       if (results.value == rmt_commands[CUST_1]) { // Select TV Mode
+        last_remote_cmd = 0;
         if (mode == TV) {
           exit_func = true;
           mode = HOLD;
@@ -1541,6 +1542,7 @@ void loop() {
       }
     #endif 
       if (results.value == rmt_commands[CUST_2]) { // Select Custom Mode 2
+        last_remote_cmd = 0;
         #ifdef ENABLE_TV
           exit_func = true;
         #endif
@@ -1551,6 +1553,7 @@ void loop() {
         mode = SET_MODE;
       } 
       if (results.value == rmt_commands[CUST_3]) { // Select Custom Mode 3
+        last_remote_cmd = 0;
         #ifdef ENABLE_TV
           exit_func = true;
         #endif
@@ -1561,6 +1564,7 @@ void loop() {
         mode = SET_MODE;
       } 
       if (results.value == rmt_commands[CUST_4]) { // Select Custom Mode 4
+        last_remote_cmd = 0;
         #ifdef ENABLE_TV
           exit_func = true;
         #endif
@@ -1571,6 +1575,7 @@ void loop() {
         mode = SET_MODE; 
       }
       if (results.value == rmt_commands[CUST_5]) { // Select Custom Mode 5
+        last_remote_cmd = 0;
         #ifdef ENABLE_TV
           exit_func = true;
         #endif
