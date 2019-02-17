@@ -142,7 +142,7 @@ const uint8_t ws2812fx_options = SIZE_SMALL + FADE_MEDIUM; // WS2812FX setSegmen
     NeoEsp8266Uart1800KbpsMethod dma = NeoEsp8266Uart1800KbpsMethod(NUMLEDS, 3);
   #endif
 #endif
-#if defined(USE_WS2812FX_DMA) or defined(USE_WS2812FX_UART)
+#if defined(USE_WS2812FX_DMA) or defined(USE_WS2812FX_UART1) or defined(USE_WS2812FX_UART2)
   void DMA_Show(void) {
     if(dma.IsReadyToUpdate()) {
       memcpy(dma.getPixels(), strip.getPixels(), dma.getPixelsSize());
@@ -584,16 +584,16 @@ DBG_OUTPUT_PORT.println("Starting....");
     json["chip_id"] = ESP.getFlashChipId();
     #if defined(USE_WS2812FX_DMA)
       json["animation_lib"] = "WS2812FX_DMA";
-      json["pin"] = 3;
+      json["ws2812_pin"] = 3;
     #elif defined(USE_WS2812FX_UART1)
       json["animation_lib"] = "WS2812FX_UART1";
-      json["pin"] = 2;
+      json["ws2812_pin"] = 2;
     #elif defined(USE_WS2812FX_UART2)
       json["animation_lib"] = "WS2812FX_UART2";
-      json["pin"] = 1;
+      json["ws2812_pin"] = 1;
     #else
       json["animation_lib"] = "WS2812FX";
-      json["pin"] = PIN;
+      json["ws2812_pin"] = PIN;
     #endif
     json["number_leds"] = NUMLEDS;
     #ifdef RGBW
@@ -603,19 +603,19 @@ DBG_OUTPUT_PORT.println("Starting....");
     #endif
     #ifdef ENABLE_BUTTON
       json["button_mode"] = "ON";
-      json["pin"] = ENABLE_BUTTON;
+      json["button_pin"] = ENABLE_BUTTON;
     #else
       json["button_mode"] = "OFF";
     #endif
     #ifdef ENABLE_BUTTON_GY33
       json["button_gy33"] = "ON";
-      json["pin"] = ENABLE_BUTTON_GY33;
+      json["gy33_pin"] = ENABLE_BUTTON_GY33;
     #else
       json["button_gy33"] = "OFF";
     #endif
     #ifdef ENABLE_REMOTE
       json["ir_remote"] = "ON";
-      json["pin"] = ENABLE_REMOTE;
+      json["tsop_ir_pin"] = ENABLE_REMOTE;
     #else
       json["ir_remote"] = "OFF";
     #endif
