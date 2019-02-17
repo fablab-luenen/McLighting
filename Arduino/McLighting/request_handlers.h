@@ -120,7 +120,7 @@ void getArgs() {
   if ((server.arg("m") != "") && (server.arg("m").toInt() >= 0) && (server.arg("m").toInt() <= strip.getModeCount())) {
     ws2812fx_mode = constrain(server.arg("m").toInt(), 0, strip.getModeCount() - 1);
   }
-  
+
   if ((server.arg("c") != "") && (server.arg("c").toInt() >= 0) && (server.arg("c").toInt() <= 100)) {
     brightness = constrain((int) server.arg("c").toInt() * 2.55, 0, 255);
   } else if ((server.arg("p") != "") && (server.arg("p").toInt() >= 0) && (server.arg("p").toInt() <= 255)) {
@@ -259,11 +259,11 @@ void handleSetSingleLED(uint8_t * mypayload, uint8_t firstChar = 0) {
     char redhex[3];
     char greenhex[3];
     char bluehex[3];
-	  char whitehex[3];
+    char whitehex[3];
     strncpy (redhex, (const char *) &mypayload[2 + firstChar], 2 );
     strncpy (greenhex, (const char *) &mypayload[4 + firstChar], 2 );
     strncpy (bluehex, (const char *) &mypayload[6 + firstChar], 2 );
-	  strncpy (whitehex, (const char *) &mypayload[8 + firstChar], 2 );
+    strncpy (whitehex, (const char *) &mypayload[8 + firstChar], 2 );
     ledstates[led].red =   strtol(redhex, NULL, 16);
     ledstates[led].green = strtol(greenhex, NULL, 16);
     ledstates[led].blue =  strtol(bluehex, NULL, 16);
@@ -329,7 +329,7 @@ void handleRangeDifferentColors(uint8_t * mypayload) {
 void setModeByStateString(String saved_state_string) {
 #ifdef ENABLE_TV
     exit_func = true;
-#endif  
+#endif
   String str_mode = getValue(saved_state_string, '|', 1);
   mode = static_cast<MODE>(str_mode.toInt());
   String str_ws2812fx_mode = getValue(saved_state_string, '|', 2);
@@ -987,18 +987,18 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
 
       root["state"] = (stateOn) ? on_cmd : off_cmd;
       JsonObject color = root.createNestedObject("color");
-      color["m"] = main_color.red;
-      color["r"] = main_color.green;
+      color["r"] = main_color.red;
+      color["g"] = main_color.green;
       color["b"] = main_color.blue;
       color["w"] = main_color.white;
-	    color["r2"] = back_color.red;
+      color["r2"] = back_color.red;
       color["g2"] = back_color.green;
       color["b2"] = back_color.blue;
-	    color["w2"] = back_color.white;
+      color["w2"] = back_color.white;
       color["r3"] = xtra_color.red;
       color["g3"] = xtra_color.green;
       color["b3"] = xtra_color.blue;
-	    color["w3"] = xtra_color.white;
+      color["w3"] = xtra_color.white;
 
       root["brightness"] = brightness;
 
@@ -1071,14 +1071,14 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         main_color.green = (uint8_t) color["g"];
         main_color.blue = (uint8_t) color["b"];
         main_color.white = (uint8_t) color["w"];
-		    back_color.red = (uint8_t) color["r2"];
+        back_color.red = (uint8_t) color["r2"];
         back_color.green = (uint8_t) color["g2"];
         back_color.blue = (uint8_t) color["b2"];
-        back_color.white = (uint8_t) color["w2"];		
+        back_color.white = (uint8_t) color["w2"];
         xtra_color.red = (uint8_t) color["r3"];
         xtra_color.green = (uint8_t) color["g3"];
         xtra_color.blue = (uint8_t) color["b3"];
-		    xtra_color.white = (uint8_t) color["w3"];
+        xtra_color.white = (uint8_t) color["w3"];
         prevmode = mode;
         mode = SETCOLOR;
       }
@@ -1675,15 +1675,15 @@ bool readStateFS() {
         main_color.red = json["red"];
         main_color.green = json["green"];
         main_color.blue = json["blue"];
-		    main_color.white = json["white"];
-		    back_color.red = json["red2"];
+        main_color.white = json["white"];
+        back_color.red = json["red2"];
         back_color.green = json["green2"];
         back_color.blue = json["blue2"];
-		    back_color.white = json["white2"];
+        back_color.white = json["white2"];
         xtra_color.red = json["red3"];
         xtra_color.green = json["green3"];
         xtra_color.blue = json["blue3"];
-		    xtra_color.white = json["white3"];
+        xtra_color.white = json["white3"];
         convertColors();
 
         strip.setMode(ws2812fx_mode);

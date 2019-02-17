@@ -689,7 +689,7 @@ DBG_OUTPUT_PORT.println("Starting....");
   // ***************************************************************************
   server.on("/set_brightness", []() {
     getArgs();
-	  mode = BRIGHTNESS;
+    mode = BRIGHTNESS;
     #ifdef ENABLE_MQTT
     mqtt_client.publish(mqtt_outtopic, String(String("OK %") + String(brightness)).c_str());
     #endif
@@ -836,15 +836,15 @@ DBG_OUTPUT_PORT.println("Starting....");
       mode = WIPE;
       getArgs();
       getStatusJSON();
-      #ifdef ENABLE_MQTT
+    #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =wipe").c_str());
-      #endif
-      #ifdef ENABLE_AMQTT
+    #endif
+    #ifdef ENABLE_AMQTT
       amqttClient.publish(mqtt_outtopic.c_str(), qospub, false, String("OK =wipe").c_str());
-      #endif
-      #ifdef ENABLE_HOMEASSISTANT
+    #endif
+    #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
-      #endif
+    #endif
     });
   
     server.on("/rainbow", []() {
@@ -854,15 +854,15 @@ DBG_OUTPUT_PORT.println("Starting....");
       mode = RAINBOW;
       getArgs();
       getStatusJSON();
-      #ifdef ENABLE_MQTT
+    #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =rainbow").c_str());
-      #endif
-      #ifdef ENABLE_AMQTT
+    #endif
+    #ifdef ENABLE_AMQTT
       amqttClient.publish(mqtt_outtopic.c_str(), qospub, false, String("OK =rainbow").c_str());
-      #endif
-      #ifdef ENABLE_HOMEASSISTANT
+    #endif
+    #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
-      #endif
+    #endif
     });
   
     server.on("/rainbowCycle", []() {
@@ -872,15 +872,15 @@ DBG_OUTPUT_PORT.println("Starting....");
       mode = RAINBOWCYCLE;
       getArgs();
       getStatusJSON();
-      #ifdef ENABLE_MQTT
+    #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =rainbowCycle").c_str());
-      #endif
-      #ifdef ENABLE_AMQTT
+    #endif
+    #ifdef ENABLE_AMQTT
       amqttClient.publish(mqtt_outtopic.c_str(), qospub, false, String("OK =rainbowCycle").c_str());
-      #endif
-      #ifdef ENABLE_HOMEASSISTANT
-        stateOn = true;
-      #endif
+    #endif
+    #ifdef ENABLE_HOMEASSISTANT
+      stateOn = true;
+    #endif
     });
   
     server.on("/theaterchase", []() {
@@ -890,15 +890,15 @@ DBG_OUTPUT_PORT.println("Starting....");
       mode = THEATERCHASE;
       getArgs();
       getStatusJSON();
-      #ifdef ENABLE_MQTT
+    #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =theaterchase").c_str());
-      #endif
-      #ifdef ENABLE_AMQTT
+    #endif
+    #ifdef ENABLE_AMQTT
       amqttClient.publish(mqtt_outtopic.c_str(), qospub, false, String("OK =theaterchase").c_str());
-      #endif
-      #ifdef ENABLE_HOMEASSISTANT
-        stateOn = true;
-      #endif
+    #endif
+    #ifdef ENABLE_HOMEASSISTANT
+      stateOn = true;
+    #endif
     });
   
     server.on("/twinkleRandom", []() {
@@ -908,15 +908,15 @@ DBG_OUTPUT_PORT.println("Starting....");
       mode = TWINKLERANDOM;
       getArgs();
       getStatusJSON();
-      #ifdef ENABLE_MQTT
+    #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =twinkleRandom").c_str());
-      #endif
-      #ifdef ENABLE_AMQTT
+    #endif
+    #ifdef ENABLE_AMQTT
       amqttClient.publish(mqtt_outtopic.c_str(), qospub, false, String("OK =twinkleRandom").c_str());
-      #endif
-      #ifdef ENABLE_HOMEASSISTANT
-        stateOn = true;
-      #endif
+    #endif
+    #ifdef ENABLE_HOMEASSISTANT
+      stateOn = true;
+    #endif
     });
     
     server.on("/theaterchaseRainbow", []() {
@@ -926,15 +926,15 @@ DBG_OUTPUT_PORT.println("Starting....");
       mode = THEATERCHASERAINBOW;
       getArgs();
       getStatusJSON();
-      #ifdef ENABLE_MQTT
+    #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =theaterchaseRainbow").c_str());
-      #endif
-      #ifdef ENABLE_AMQTT
+    #endif
+    #ifdef ENABLE_AMQTT
       amqttClient.publish(mqtt_outtopic.c_str(), qospub, false, String("OK =theaterchaseRainbow").c_str());
-      #endif
-      #ifdef ENABLE_HOMEASSISTANT
+    #endif
+    #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
-      #endif
+    #endif
     });
   #endif
   
@@ -945,15 +945,15 @@ DBG_OUTPUT_PORT.println("Starting....");
     #endif
       mode = E131;
       getStatusJSON();
-      #ifdef ENABLE_MQTT
+    #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =e131").c_str());
-      #endif
-      #ifdef ENABLE_AMQTT
+    #endif
+    #ifdef ENABLE_AMQTT
       amqttClient.publish(mqtt_outtopic.c_str(), qospub, false, String("OK =e131").c_str());
-      #endif
-      #ifdef ENABLE_HOMEASSISTANT
+    #endif
+    #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
-      #endif
+    #endif
     });
   #endif
   
@@ -963,15 +963,15 @@ DBG_OUTPUT_PORT.println("Starting....");
       mode = TV;
       //getArgs();
       getStatusJSON();
-      #ifdef ENABLE_MQTT
+    #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =tv").c_str());
-      #endif
-      #ifdef ENABLE_AMQTT
+    #endif
+    #ifdef ENABLE_AMQTT
       amqttClient.publish(mqtt_outtopic.c_str(), qospub, false, String("OK =tv").c_str());
-      #endif
-      #ifdef ENABLE_HOMEASSISTANT
+    #endif
+    #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
-      #endif
+    #endif
     });
   #endif
 
