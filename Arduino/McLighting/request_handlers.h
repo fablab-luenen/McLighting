@@ -1436,7 +1436,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
     if (millis() - keyPrevMillis >= keySampleIntervalMs) {
       keyPrevMillis = millis();
 
-      byte currKeyState = digitalRead(BUTTON);
+      byte currKeyState = digitalRead(ENABLE_BUTTON);
 
       if ((prevKeyState == HIGH) && (currKeyState == LOW)) {
         // key goes from not pressed to pressed
@@ -1507,7 +1507,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
     if (millis() - keyPrevMillis_gy33 >= keySampleIntervalMs_gy33) {
       keyPrevMillis_gy33 = millis();
 
-      byte currKeyState_gy33 = digitalRead(BUTTON_GY33);
+      byte currKeyState_gy33 = digitalRead(ENABLE_BUTTON_GY33);
 
       if ((prevKeyState_gy33 == HIGH) && (currKeyState_gy33 == LOW)) {
         // key goes from not pressed to pressed

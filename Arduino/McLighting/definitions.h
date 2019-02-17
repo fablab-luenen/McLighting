@@ -6,9 +6,6 @@
 #define PIN 3              // PIN (15 / D8) where neopixel / WS2811 strip is attached 
 #define NUMLEDS 144        // Number of leds in the strip 
 #define BUILTIN_LED 2      // ESP-12F has the built in LED on GPIO2, see https://github.com/esp8266/Arduino/issues/2192
-#define BUTTON  14         // Input pin (14 / D5) for switching the LED strip on / off, connect this PIN to ground to trigger button.
-//#define BUTTON_GY33 12     // Input pin (12 / D6) for read color data with RGB sensor, connect this PIN to ground to trigger button.
-#define REMOTE_PIN 13          // Input pin (13 / D7) for TSOP31238 Out
 #define RGBW               // If defined, use RGBW Strips
 
 const char HOSTNAME[] = "McLightingRGBW_01";   // Friedly hostname
@@ -18,8 +15,9 @@ const char HOSTNAME[] = "McLightingRGBW_01";   // Friedly hostname
 #define ENABLE_AMQTT                // If defined, enable Async MQTT code, see: https://github.com/marvinroger/async-mqtt-client
 //#define ENABLE_MQTT               // If defined, enable MQTT client code, see: https://github.com/toblum/McLighting/wiki/MQTT-API
 //#define ENABLE_HOMEASSISTANT      // If defined, enable Homeassistant integration, ENABLE_MQTT or ENABLE_AMQTT must be active
-#define ENABLE_BUTTON               // If defined, enable button handling code, see: https://github.com/toblum/McLighting/wiki/Button-control
-//#define ENABLE_BUTTON_GY33          // If defined, enable button handling code for GY-33 color sensor to scan color
+#define ENABLE_BUTTON 14            // If defined, enable button handling code, see: https://github.com/toblum/McLighting/wiki/Button-control, the value defines the input pin (14 / D5) for switching the LED strip on / off, connect this PIN to ground to trigger button.
+//#define ENABLE_BUTTON_GY33 12       // If defined, enable button handling code for GY-33 color sensor to scan color. The value defines the input pin (12 / D6) for read color data with RGB sensor, connect this PIN to ground to trigger button.
+//#define ENABLE_REMOTE 13            // If defined, enable Remote Control via TSOP31238. The value defines the input pin (13 / D7) for TSOP31238 Out 
 
 //#define MQTT_HOME_ASSISTANT_SUPPORT // If defined, use AMQTT and select Tools -> IwIP Variant -> Higher Bandwidth
 #define ENABLE_LEGACY_ANIMATIONS    // Enable Legacy Animations
@@ -52,8 +50,14 @@ const char HOSTNAME[] = "McLightingRGBW_01";   // Friedly hostname
   #define MQTT_HOME_ASSISTANT_0_84_SUPPORT // Comment if using HA version < 0.84 
 #endif
 
-#if defined(USE_WS2812FX_DMA) and defined(USE_WS2812FX_UART)
+#if defined(USE_WS2812FX_DMA) and defined(USE_WS2812FX_UART1)
 #error "Cant have both DMA and UART method."
+#endif
+#if defined(USE_WS2812FX_DMA) and defined(USE_WS2812FX_UART2)
+#error "Cant have both DMA and UART method."
+#endif
+#if defined(USE_WS2812FX_UART1) and defined(USE_WS2812FX_UART2)
+#error "Cant have both UART methods."
 #endif
 #if defined(ENABLE_MQTT) and defined(ENABLE_AMQTT)
 #error "Cant have both PubSubClient and AsyncMQTT enabled. Choose either one."

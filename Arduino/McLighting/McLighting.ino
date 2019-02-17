@@ -202,7 +202,7 @@ void tick()
 #endif
 
 #ifdef ENABLE_REMOTE
-  IRrecv irrecv(REMOTE_PIN);
+  IRrecv irrecv(ENABLE_REMOTE);
   decode_results results;
   
 #endif
@@ -283,11 +283,11 @@ void setup() {
   pinMode(BUILTIN_LED, OUTPUT);
   // button pin setup
 #ifdef ENABLE_BUTTON
-  pinMode(BUTTON,INPUT_PULLUP);
+  pinMode(ENABLE_BUTTON,INPUT_PULLUP);
 #endif
 
 #ifdef ENABLE_BUTTON_GY33
-  pinMode(BUTTON_GY33, INPUT_PULLUP);
+  pinMode(ENABLE_BUTTON_GY33, INPUT_PULLUP);
   if (tcs.begin()) {
     DBG_OUTPUT_PORT.println("Found GY-33 sensor");
   } else {
@@ -585,18 +585,39 @@ DBG_OUTPUT_PORT.println("Starting....");
     #if defined(USE_WS2812FX_DMA)
       json["animation_lib"] = "WS2812FX_DMA";
       json["pin"] = 3;
-    #elif defined(USE_WS2812FX_UART)
-      json["animation_lib"] = "WS2812FX_UART";
+    #elif defined(USE_WS2812FX_UART1)
+      json["animation_lib"] = "WS2812FX_UART1";
       json["pin"] = 2;
+    #elif defined(USE_WS2812FX_UART2)
+      json["animation_lib"] = "WS2812FX_UART2";
+      json["pin"] = 1;
     #else
       json["animation_lib"] = "WS2812FX";
       json["pin"] = PIN;
     #endif
     json["number_leds"] = NUMLEDS;
+    #ifdef RGBW
+      json["rgbw_mode"] = "ON";
+    #else
+      json["rgbw_mode"] = "OFF";
+    #endif
     #ifdef ENABLE_BUTTON
       json["button_mode"] = "ON";
+      json["pin"] = ENABLE_BUTTON;
     #else
       json["button_mode"] = "OFF";
+    #endif
+    #ifdef ENABLE_BUTTON_GY33
+      json["button_gy33"] = "ON";
+      json["pin"] = ENABLE_BUTTON_GY33;
+    #else
+      json["button_gy33"] = "OFF";
+    #endif
+    #ifdef ENABLE_REMOTE
+      json["ir_remote"] = "ON";
+      json["pin"] = ENABLE_REMOTE;
+    #else
+      json["ir_remote"] = "OFF";
     #endif
     #ifdef ENABLE_AMQTT
       json["amqtt"] = "ON";
