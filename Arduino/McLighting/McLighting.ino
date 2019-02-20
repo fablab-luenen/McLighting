@@ -34,18 +34,11 @@
   #include <ArduinoOTA.h>
 #endif
 
-//SPIFFS Save
-#if !defined(ENABLE_HOMEASSISTANT) and defined(ENABLE_STATE_SAVE_SPIFFS)
-  #include <ArduinoJson.h>         //https://github.com/bblanchon/ArduinoJson
-#endif
+#include <ArduinoJson.h>         //https://github.com/bblanchon/ArduinoJson
 
 // MQTT
 #ifdef ENABLE_MQTT
   #include <PubSubClient.h>
-  #ifdef ENABLE_HOMEASSISTANT
-    #include <ArduinoJson.h>       //https://github.com/bblanchon/ArduinoJson
-  #endif
-
   WiFiClient espClient;
   PubSubClient mqtt_client(espClient);
 #endif
@@ -53,10 +46,6 @@
 #ifdef ENABLE_AMQTT
   #include <AsyncMqttClient.h>     //https://github.com/marvinroger/async-mqtt-client
                                    //https://github.com/me-no-dev/ESPAsyncTCP
-  #ifdef ENABLE_HOMEASSISTANT
-    #include <ArduinoJson.h>
-  #endif
-
   AsyncMqttClient amqttClient;
   WiFiEventHandler wifiConnectHandler;
   WiFiEventHandler wifiDisconnectHandler;
@@ -163,9 +152,9 @@ Ticker ticker;
   Ticker mqttReconnectTimer;
   Ticker wifiReconnectTimer;
 #endif
-#ifdef ENABLE_STATE_SAVE_SPIFFS
-  Ticker spiffs_save_state;
-#endif
+
+Ticker settings_save_state;
+
 void tick()
 {
   //toggle state
@@ -195,7 +184,7 @@ void tick()
       if (i < value.length()) {
         EEPROM.write(i + offset, value[i]);
       } else {
-        EEPROM.write(i + offset, NULL);
+        EEPROM.write(i + offset, 0);
       }
     }
   }
@@ -710,6 +699,7 @@ DBG_OUTPUT_PORT.println("Starting....");
   // ***************************************************************************
   server.on("/set_brightness", []() {
     getArgs();
+    prevmode = mode;
     mode = BRIGHTNESS;
     #ifdef ENABLE_MQTT
     mqtt_client.publish(mqtt_outtopic, String(String("OK %") + String(brightness)).c_str());
@@ -734,6 +724,7 @@ DBG_OUTPUT_PORT.println("Starting....");
 
   server.on("/set_speed", []() {
     getArgs();
+    prevmode = mode;
     mode = SETSPEED;
     #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String(String("OK ?") + String(ws2812fx_speed)).c_str());
@@ -794,9 +785,7 @@ DBG_OUTPUT_PORT.println("Starting....");
   });
 
   server.on("/off", []() {
-    #ifdef ENABLE_TV
-      exit_func = true;
-    #endif
+    prevmode = mode;
     mode = OFF;
     //getArgs();
     getStatusJSON();
@@ -812,11 +801,7 @@ DBG_OUTPUT_PORT.println("Starting....");
   });
 
     server.on("/auto", []() {
-    #ifdef ENABLE_TV
-      exit_func = true;
-    #endif
     handleAutoStart();
-    getArgs();
     getStatusJSON();
     #ifdef ENABLE_MQTT
     mqtt_client.publish(mqtt_outtopic, String("OK =auto").c_str());
@@ -830,12 +815,8 @@ DBG_OUTPUT_PORT.println("Starting....");
   });
 
   server.on("/all", []() {
-    #ifdef ENABLE_TV
-      exit_func = true;
-    #endif
     ws2812fx_mode = FX_MODE_STATIC;
     mode = SET_MODE;
-    //mode = ALL;
     getArgs();
     getStatusJSON();
     #ifdef ENABLE_MQTT
@@ -851,10 +832,8 @@ DBG_OUTPUT_PORT.println("Starting....");
 
   #ifdef ENABLE_LEGACY_ANIMATIONS
     server.on("/wipe", []() {
-    #ifdef ENABLE_TV
-      exit_func = true;
-    #endif
-      mode = WIPE;
+      ws2812fx_mode = FX_MODE_COLOR_WIPE;
+      mode = SET_MODE;
       getArgs();
       getStatusJSON();
     #ifdef ENABLE_MQTT
@@ -869,10 +848,8 @@ DBG_OUTPUT_PORT.println("Starting....");
     });
   
     server.on("/rainbow", []() {
-    #ifdef ENABLE_TV
-      exit_func = true;
-    #endif
-      mode = RAINBOW;
+      ws2812fx_mode = FX_MODE_RAINBOW;
+      mode = SET_MODE;
       getArgs();
       getStatusJSON();
     #ifdef ENABLE_MQTT
@@ -887,10 +864,8 @@ DBG_OUTPUT_PORT.println("Starting....");
     });
   
     server.on("/rainbowCycle", []() {
-    #ifdef ENABLE_TV
-      exit_func = true;
-    #endif
-      mode = RAINBOWCYCLE;
+      ws2812fx_mode = FX_MODE_RAINBOW_CYCLE;
+      mode = SET_MODE;
       getArgs();
       getStatusJSON();
     #ifdef ENABLE_MQTT
@@ -905,10 +880,8 @@ DBG_OUTPUT_PORT.println("Starting....");
     });
   
     server.on("/theaterchase", []() {
-    #ifdef ENABLE_TV
-      exit_func = true;
-    #endif
-      mode = THEATERCHASE;
+      ws2812fx_mode = FX_MODE_THEATER_CHASE;
+      mode = SET_MODE;
       getArgs();
       getStatusJSON();
     #ifdef ENABLE_MQTT
@@ -923,10 +896,8 @@ DBG_OUTPUT_PORT.println("Starting....");
     });
   
     server.on("/twinkleRandom", []() {
-    #ifdef ENABLE_TV
-      exit_func = true;
-    #endif
-      mode = TWINKLERANDOM;
+      ws2812fx_mode = FX_MODE_TWINKLE_RANDOM;
+      mode = SET_MODE;
       getArgs();
       getStatusJSON();
     #ifdef ENABLE_MQTT
@@ -941,10 +912,8 @@ DBG_OUTPUT_PORT.println("Starting....");
     });
     
     server.on("/theaterchaseRainbow", []() {
-    #ifdef ENABLE_TV
-      exit_func = true;
-    #endif
-      mode = THEATERCHASERAINBOW;
+      ws2812fx_mode = FX_MODE_THEATER_CHASE_RAINBOW;
+      mode = SET_MODE;
       getArgs();
       getStatusJSON();
     #ifdef ENABLE_MQTT
@@ -961,9 +930,7 @@ DBG_OUTPUT_PORT.println("Starting....");
   
   #ifdef ENABLE_E131
     server.on("/e131", []() {
-    #ifdef ENABLE_TV
-      exit_func = true;
-    #endif
+      prevmode = mode;
       mode = E131;
       getStatusJSON();
     #ifdef ENABLE_MQTT
@@ -980,10 +947,9 @@ DBG_OUTPUT_PORT.println("Starting....");
   
   #ifdef ENABLE_TV  
     server.on("/tv", []() {
-      exit_func = true;
-      mode = TV;
-      //getArgs();
-      getStatusJSON();
+    prevmode = mode;
+    mode = TV;
+    getStatusJSON();
     #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =tv").c_str());
     #endif
@@ -1049,9 +1015,8 @@ DBG_OUTPUT_PORT.println("Starting....");
       DBG_OUTPUT_PORT.printf("Found saved state: %s\n", saved_state_string.c_str());
       setModeByStateString(saved_state_string);
     }
-    sprintf(last_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
   #endif
-  
+  prevmode = mode;
   #ifdef ENABLE_BUTTON_GY33
     tcs.setConfig(MCU_LED_06, MCU_WHITE_ON);
 //    delay(2000);
@@ -1062,7 +1027,6 @@ DBG_OUTPUT_PORT.println("Starting....");
     irrecv.enableIRIn();  // Start the receiver
   #endif
 }
-
 
 void loop() {
   #ifdef ENABLE_BUTTON
@@ -1112,154 +1076,75 @@ void loop() {
   // Simple statemachine that handles the different modes
   if (mode == OFF) {
     if(strip.isRunning()) strip.stop(); //should clear memory
-  #ifdef ENABLE_STATE_SAVE_SPIFFS
-    if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-  #endif
   }
   
   #ifdef ENABLE_TV
     if (mode == TV) {
-  #ifdef ENABLE_STATE_SAVE_SPIFFS
-    if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-  #endif
       if(!strip.isRunning()) strip.start();
       tv();
     }
   #endif
   
   #ifdef ENABLE_E131
-    if (mode == E131) {
-  #ifdef ENABLE_STATE_SAVE_SPIFFS
-    if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-  #endif      
+    if (mode == E131) {    
       handleE131();
     }
   #endif
   if (mode == SET_MODE) {
     DBG_OUTPUT_PORT.printf("SET_MODE: %d %d\n", ws2812fx_mode, mode);
     strip.setMode(ws2812fx_mode);
-    //strip.trigger(); // is done later anyway, why do it more than once?
     prevmode = SET_MODE;
-    mode = SETCOLOR;
+    mode = HOLD;
+    strip.trigger();
   }  
   if (mode == SETCOLOR) {
     convertColors();
     strip.setColors(0, hex_colors);
-    mode = (prevmode == SET_MODE) ? SETSPEED : prevmode;
+    mode = (prevmode == HOLD) ? HOLD : prevmode;
+    prevmode = SETCOLOR;
     if (mode == HOLD) strip.trigger();
-  #ifdef ENABLE_STATE_SAVE_SPIFFS
-    if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-  #endif
   }
   if (mode == SETSPEED) {
     strip.setSpeed(convertSpeed(ws2812fx_speed));
-    mode = (prevmode == SET_MODE) ? BRIGHTNESS : prevmode;
+    mode = (prevmode == HOLD) ? HOLD : prevmode;
+    prevmode = SETSPEED;
     if (mode == HOLD) strip.trigger();
-  #ifdef ENABLE_STATE_SAVE_SPIFFS
-    if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-  #endif
   }
   if (mode == BRIGHTNESS) {
     strip.setBrightness(brightness);
-    mode = (prevmode == SET_MODE) ? HOLD : prevmode;
+    mode = (prevmode == HOLD) ? HOLD : prevmode;
+    prevmode = BRIGHTNESS;
     if (mode == HOLD) strip.trigger();
-  #ifdef ENABLE_STATE_SAVE_SPIFFS
-    if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-  #endif
   }
-  #ifdef ENABLE_LEGACY_ANIMATIONS
-    if (mode == WIPE) {
-      strip.setMode(FX_MODE_COLOR_WIPE);
-      strip.trigger();
-      mode = HOLD;
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-    #endif
-    }
-    if (mode == RAINBOW) {
-      strip.setMode(FX_MODE_RAINBOW);
-      strip.trigger();
-      mode = HOLD;
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-    #endif
-    }
-    if (mode == RAINBOWCYCLE) {
-      strip.setMode(FX_MODE_RAINBOW_CYCLE);
-      strip.trigger();
-      mode = HOLD;
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-    #endif
-    }
-    if (mode == THEATERCHASE) {
-      strip.setMode(FX_MODE_THEATER_CHASE);
-      strip.trigger();
-      mode = HOLD;
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-    #endif
-    }
-    if (mode == TWINKLERANDOM) {
-      strip.setMode(FX_MODE_TWINKLE_RANDOM);
-      strip.trigger();
-      mode = HOLD;
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-    #endif
-    }
-    if (mode == THEATERCHASERAINBOW) {
-      strip.setMode(FX_MODE_THEATER_CHASE_RAINBOW);
-      strip.trigger();
-      mode = HOLD;
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-    #endif
-    }
-  #endif
-  
+   
   if (mode == HOLD || mode == CUSTOM) {
-    #ifdef ENABLE_TV
-      if (exit_func) {
-        exit_func = false;
-      }
-    #endif
     if(!strip.isRunning()) strip.start();
-    if (prevmode == SET_MODE) prevmode = HOLD;
+ //   if (prevmode == SET_MODE) prevmode = HOLD;
   }
   
   // Only for modes with WS2812FX functionality
-  #ifdef ENABLE_TV
-  if (mode != TV && mode != CUSTOM) {
-  #else
-  if (mode != CUSTOM) {
-  #endif
+  if (mode == AUTO || mode == HOLD) {
     strip.service();
   }
-
+  if (prevmode != mode) {
+    DBG_OUTPUT_PORT.printf("Mode: %i, PrevMode: %i\r\n", mode, prevmode);
+    if(!settings_save_state.active()) settings_save_state.once(5, tickerSaveState);
+    if (prevmode == AUTO) handleAutoStop();
+    prevmode = mode;
+  }
+  if (updateState) {
   #ifdef ENABLE_STATE_SAVE_SPIFFS
-    if (updateStateFS) {
       (writeStateFS()) ? DBG_OUTPUT_PORT.println(" Success!") : DBG_OUTPUT_PORT.println(" Failure!");
-    }
   #endif
-
   #ifdef ENABLE_STATE_SAVE_EEPROM
-    // Check for state changes
-    sprintf(current_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
-
-    if (strcmp(current_state, last_state) != 0) {
-      // DBG_OUTPUT_PORT.printf("STATE CHANGED: %s / %s\n", last_state, current_state);
-      strcpy(last_state, current_state);
-      time_statechange = millis();
-      state_save_requested = true;
-    }
-    if (state_save_requested && time_statechange + timeout_statechange_save <= millis()) {
-      time_statechange = 0;
-      state_save_requested = false;
-      writeEEPROM(256, 66, last_state); // 256 --> last_state (reserved 66 bytes)
+      char state[66];
+      sprintf(state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
+      writeEEPROM(256, 66, state); // 256 --> last_state (reserved 66 bytes)
       EEPROM.commit();
-    }
+      updateState = false;
+      settings_save_state.detach();
   #endif
+  }
 
   #ifdef ENABLE_REMOTE
     if (irrecv.decode(&results)) {
@@ -1275,16 +1160,15 @@ void loop() {
       if (results.value == rmt_commands[ON_OFF]) {   // ON/OFF TOGGLE
         last_remote_cmd = 0;
         if (mode == OFF) {
+            prevmode = mode;
             setModeByStateString(beforeoffauto_state);
         } else {
           if (mode == AUTO) {
             handleAutoStop();
           } else {
-#ifdef ENABLE_TV
-            exit_func = true;
-#endif
             sprintf(beforeoffauto_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
           }
+          prevmode = mode;
           mode = OFF;
         }
       }
@@ -1552,21 +1436,20 @@ void loop() {
       if (results.value == rmt_commands[CUST_1]) { // Select TV Mode
         last_remote_cmd = 0;
         if (mode == TV) {
-          exit_func = true;
-          mode = HOLD;
+          prevmode = mode;
+          setModeByStateString(beforeoffauto_state);
         } else {
           if (mode==AUTO) {
             handleAutoStop();
           }
+          sprintf(beforeoffauto_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
+          prevmode = mode;
           mode = TV;
         }  
       }
     #endif 
       if (results.value == rmt_commands[CUST_2]) { // Select Custom Mode 2
         last_remote_cmd = 0;
-        #ifdef ENABLE_TV
-          exit_func = true;
-        #endif
         if (mode==AUTO) {
           handleAutoStop();
         }
@@ -1575,9 +1458,6 @@ void loop() {
       } 
       if (results.value == rmt_commands[CUST_3]) { // Select Custom Mode 3
         last_remote_cmd = 0;
-        #ifdef ENABLE_TV
-          exit_func = true;
-        #endif
         if (mode==AUTO) {
           handleAutoStop();
         }
@@ -1586,9 +1466,6 @@ void loop() {
       } 
       if (results.value == rmt_commands[CUST_4]) { // Select Custom Mode 4
         last_remote_cmd = 0;
-        #ifdef ENABLE_TV
-          exit_func = true;
-        #endif
         if (mode==AUTO) {
           handleAutoStop();
         }
@@ -1597,9 +1474,6 @@ void loop() {
       }
       if (results.value == rmt_commands[CUST_5]) { // Select Custom Mode 5
         last_remote_cmd = 0;
-        #ifdef ENABLE_TV
-          exit_func = true;
-        #endif
         if (mode==AUTO) {
           handleAutoStop();
         }

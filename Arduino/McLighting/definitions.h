@@ -30,8 +30,8 @@ const char HOSTNAME[] = "McLightingRGBW_01";   // Friedly hostname
 #endif
 
 #ifdef ENABLE_REMOTE
-  int  selected_color = 1;
-  int  chng = 1;
+  int      selected_color = 1;
+  int      chng = 1;
   uint64_t last_remote_cmd;
   enum                     RMT_BTN {ON_OFF,    MODE_UP, MODE_DOWN,   RED_UP, RED_DOWN, GREEN_UP, GREEN_DOWN,  BLUE_UP, BLUE_DOWN, WHITE_UP, WHITE_DOWN, BRIGHTNESS_UP, BRIGHTNESS_DOWN, SPEED_UP, SPEED_DOWN,    COL_M,    COL_B,    COL_X, AUTOMODE,    CUST_1,   CUST_2,    CUST_3,   CUST_4,   CUST_5,          REPEATCMD, BTN_CNT};
   // Change your IR Commands here. You can see them in console, after you pressed a button on the remote
@@ -129,16 +129,8 @@ uint32_t autoParams[][6] = {   // main_color, back_color, xtra_color, speed, mod
 #define DBG_OUTPUT_PORT Serial  // Set debug output port
 
 // List of all color modes
-#ifdef ENABLE_LEGACY_ANIMATIONS
-  enum MODE {OFF, AUTO, TV, E131, SET_MODE, HOLD, CUSTOM, SETCOLOR, SETSPEED, BRIGHTNESS, WIPE, RAINBOW, RAINBOWCYCLE, THEATERCHASE, TWINKLERANDOM, THEATERCHASERAINBOW};
-  MODE mode = RAINBOW;         // Standard mode that is active when software starts
-#else
-  enum MODE {OFF, AUTO, TV, E131, SET_MODE, HOLD, CUSTOM, SETCOLOR, SETSPEED, BRIGHTNESS};
-  MODE mode = SET_MODE;        // Standard mode that is active when software starts
-#endif
-#ifdef ENABLE_TV
-  bool exit_func = false;      // Global helper variable to get out of the color modes when mode changes
-#endif
+enum MODE {OFF, AUTO, TV, E131, SET_MODE, HOLD, CUSTOM, SETCOLOR, SETSPEED, BRIGHTNESS};
+MODE mode = SET_MODE;        // Standard mode that is active when software starts
 MODE prevmode = mode;
 
 int ws2812fx_speed = 196;      // Global variable for storing the delay between color changes --> smaller == faster
@@ -168,16 +160,8 @@ LEDState xtra_color = {   0, 0, 0, 0 };  // Store the "3rd color" of the strip u
 //#define ENABLE_STATE_SAVE_EEPROM        // If defined, save state on reboot
 
 char beforeoffauto_state[66];            // Keeps the state representation before auto mode
-#ifdef ENABLE_STATE_SAVE_EEPROM
-  char current_state[66];               // Keeps the current state representation
-  char last_state[66];                  // Save the last state as string representation
-  unsigned long time_statechange = 0;   // Time when the state last changed
-  int timeout_statechange_save = 5000;  // Timeout in ms to wait before state is saved
-  bool state_save_requested = false;    // State has to be saved after timeout
-#endif
-#ifdef ENABLE_STATE_SAVE_SPIFFS
-  bool updateStateFS = false;
-#endif
+bool updateState = false;
+
 
 // Button handling
 #if defined(ENABLE_BUTTON) || defined(ENABLE_BUTTON_GY33)

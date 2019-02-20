@@ -1,6 +1,7 @@
 // ***************************************************************************
 // Request handlers
 // ***************************************************************************
+void handleAutoStart(void);
 #ifdef ENABLE_E131
 void checkForRequests(void); //prototype
 
@@ -40,11 +41,10 @@ void tickerSendState(){
   new_ha_mqtt_msg = true;
 }
 #endif
-#ifdef ENABLE_STATE_SAVE_SPIFFS
-void tickerSpiffsSaveState(){
-  updateStateFS = true;
+void tickerSaveState(){
+  updateState = true;
 }
-#endif
+
 
 // Call convertColors whenever main_color, back_color or xtra_color changes.
 void convertColors() {
@@ -199,9 +199,6 @@ void handleSetMainColor(uint8_t * mypayload) {
   main_color.green = ((rgb >> 8) & 0xFF);
   main_color.blue = ((rgb >> 0) & 0xFF);
 //  strip.setColor(main_color.red, main_color.green, main_color.blue);
-  #ifdef ENABLE_TV
-    exit_func = true;
-  #endif
   prevmode = mode;
   mode = SETCOLOR;
 }
@@ -213,9 +210,6 @@ void handleSetBackColor(uint8_t * mypayload) {
   back_color.red = ((rgb >> 16) & 0xFF);
   back_color.green = ((rgb >> 8) & 0xFF);
   back_color.blue = ((rgb >> 0) & 0xFF);
-  #ifdef ENABLE_TV
-    exit_func = true;
-  #endif
   prevmode = mode;
   mode = SETCOLOR;
 }
@@ -226,9 +220,6 @@ void handleSetXtraColor(uint8_t * mypayload) {
   xtra_color.red = ((rgb >> 16) & 0xFF);
   xtra_color.green = ((rgb >> 8) & 0xFF);
   xtra_color.blue = ((rgb >> 0) & 0xFF);
-  #ifdef ENABLE_TV
-    exit_func = true;
-  #endif
   prevmode = mode;
   mode = SETCOLOR;
 }
@@ -241,9 +232,6 @@ void handleSetAllMode(uint8_t * mypayload) {
   main_color.green = ((rgb >> 8) & 0xFF);
   main_color.blue = ((rgb >> 0) & 0xFF);
   DBG_OUTPUT_PORT.printf("WS: Set all leds to main color: R: [%u] G: [%u] B: [%u] W: [%u]\n", main_color.red, main_color.green, main_color.blue, main_color.white);
-  #ifdef ENABLE_TV
-    exit_func = true;
-  #endif
   ws2812fx_mode = FX_MODE_STATIC;
   mode = SET_MODE;
 }
@@ -274,9 +262,6 @@ void handleSetSingleLED(uint8_t * mypayload, uint8_t firstChar = 0) {
     strip.setPixelColor(led, ledstates[led].red, ledstates[led].green, ledstates[led].blue, ledstates[led].white);
     strip.show();
   }
-  #ifdef ENABLE_TV
-    exit_func = true;
-  #endif
   mode = CUSTOM;
 }
 
@@ -327,9 +312,6 @@ void handleRangeDifferentColors(uint8_t * mypayload) {
 }
 
 void setModeByStateString(String saved_state_string) {
-#ifdef ENABLE_TV
-    exit_func = true;
-#endif
   String str_mode = getValue(saved_state_string, '|', 1);
   mode = static_cast<MODE>(str_mode.toInt());
   String str_ws2812fx_mode = getValue(saved_state_string, '|', 2);
@@ -388,11 +370,8 @@ void setModeByStateString(String saved_state_string) {
 }
 
 void handleSetNamedMode(String str_mode) {
-#ifdef ENABLE_TV
-    exit_func = true;
-#endif
-  
     if (str_mode.startsWith("=off") or str_mode.startsWith("/off")) {
+      prevmode = mode;
       mode = OFF;
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = false;
@@ -401,6 +380,7 @@ void handleSetNamedMode(String str_mode) {
 
 #ifdef ENABLE_TV
     if (str_mode.startsWith("=tv") or str_mode.startsWith("/tv")) {
+      prevmode = mode;
       mode = TV;
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
@@ -411,6 +391,7 @@ void handleSetNamedMode(String str_mode) {
 #ifdef ENABLE_E131
     if (str_mode.startsWith("=e131") or str_mode.startsWith("/e131")) {
       if(strip.isRunning()) strip.stop();
+      prevmode = mode;
       mode = E131;
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
@@ -420,7 +401,7 @@ void handleSetNamedMode(String str_mode) {
 
 #ifdef ENABLE_LEGACY_ANIMATIONS    
     if (str_mode.startsWith("=auto")) {
-      mode = AUTO;
+      handleAutoStart();
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
       #endif
@@ -433,37 +414,43 @@ void handleSetNamedMode(String str_mode) {
       #endif
     }
     if (str_mode.startsWith("=wipe")) {
-      mode = WIPE;
+      ws2812fx_mode = FX_MODE_COLOR_WIPE;
+      mode = SET_MODE;
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
       #endif
     }
     if (str_mode.startsWith("=rainbow")) {
-      mode = RAINBOW;
+      ws2812fx_mode = FX_MODE_RAINBOW;
+      mode = SET_MODE;
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
       #endif
     }
     if (str_mode.startsWith("=rainbowCycle")) {
-      mode = RAINBOWCYCLE;
+      ws2812fx_mode = FX_MODE_RAINBOW_CYCLE;
+      mode = SET_MODE;
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
       #endif
     }
     if (str_mode.startsWith("=theaterchase")) {
-      mode = THEATERCHASE;
+      ws2812fx_mode = FX_MODE_THEATER_CHASE;
+      mode = SET_MODE;
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
       #endif
     }
     if (str_mode.startsWith("=twinkleRandom")) {
-      mode = TWINKLERANDOM;
+      ws2812fx_mode = FX_MODE_TWINKLE_RANDOM;
+      mode = SET_MODE;
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
       #endif
     }
     if (str_mode.startsWith("=theaterchaseRainbow")) {
-      mode = THEATERCHASERAINBOW;
+      ws2812fx_mode = FX_MODE_THEATER_CHASE_RAINBOW;
+      mode = SET_MODE;
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
       #endif
@@ -473,9 +460,6 @@ void handleSetNamedMode(String str_mode) {
 void handleSetWS2812FXMode(uint8_t * mypayload) {
   uint8_t ws2812fx_mode_tmp = (uint8_t) strtol((const char *) &mypayload[1], NULL, 10);
   ws2812fx_mode = constrain(ws2812fx_mode_tmp, 0, strip.getModeCount() - 1);
-  #ifdef ENABLE_TV
-    exit_func = true;
-  #endif
   mode = SET_MODE;
 }
 
@@ -611,9 +595,6 @@ void autoTick() {
 
 void handleAutoStart() {
   if (mode!=AUTO) {
-    #ifdef ENABLE_TV
-      exit_func = true;
-    #endif
     sprintf(beforeoffauto_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
     mode = AUTO;
     autoCount = 0;
@@ -668,9 +649,6 @@ void checkpayload(uint8_t * payload, bool mqtt = false, uint8_t num = 0) {
   if (payload[0] == '?') {
     uint8_t d = (uint8_t) strtol((const char *) &payload[1], NULL, 10);
     ws2812fx_speed = constrain(d, 0, 255);
-    #ifdef ENABLE_TV
-      exit_func = true;
-    #endif
     prevmode = mode;
     mode = SETSPEED;
     Dbg_Prefix(mqtt, num);
@@ -691,9 +669,6 @@ void checkpayload(uint8_t * payload, bool mqtt = false, uint8_t num = 0) {
   if (payload[0] == '%') {
     uint8_t b = (uint8_t) strtol((const char *) &payload[1], NULL, 10);
     brightness = constrain(b, 0, 255);
-    #ifdef ENABLE_TV
-      exit_func = true;
-    #endif  
     prevmode = mode;
     mode = BRIGHTNESS;
     Dbg_Prefix(mqtt, num);
@@ -707,9 +682,6 @@ void checkpayload(uint8_t * payload, bool mqtt = false, uint8_t num = 0) {
     #ifdef ENABLE_HOMEASSISTANT
       stateOn = true;
       if(!ha_send_data.active())  ha_send_data.once(5, tickerSendState);
-    #endif
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
     #endif
   }
 
@@ -727,9 +699,6 @@ void checkpayload(uint8_t * payload, bool mqtt = false, uint8_t num = 0) {
     #ifdef ENABLE_HOMEASSISTANT
       stateOn = true;
       if(!ha_send_data.active())  ha_send_data.once(5, tickerSendState);
-    #endif
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
     #endif
   }
 
@@ -790,9 +759,6 @@ void checkpayload(uint8_t * payload, bool mqtt = false, uint8_t num = 0) {
       #endif
       #ifdef ENABLE_HOMEASSISTANT
         if(!ha_send_data.active())  ha_send_data.once(5, tickerSendState);
-      #endif
-      #ifdef ENABLE_STATE_SAVE_SPIFFS
-        if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
       #endif
     }
   #endif
@@ -860,9 +826,6 @@ void checkpayload(uint8_t * payload, bool mqtt = false, uint8_t num = 0) {
     #ifdef ENABLE_HOMEASSISTANT
       stateOn = true;
       if(!ha_send_data.active())  ha_send_data.once(5, tickerSendState);
-    #endif
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
     #endif
   }
 }
@@ -1060,6 +1023,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         else if (strcmp(state_in, off_cmd) == 0) {
           stateOn = false;
           animation_on = false;
+          prevmode = mode;
           mode = OFF;
           return true;
         }
@@ -1158,7 +1122,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         }
         if(!ha_send_data.active())  ha_send_data.once(5, tickerSendState);
         #ifdef ENABLE_STATE_SAVE_SPIFFS
-          if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
+          if(!settings_save_state.active()) settings_save_state.once(3, tickerSaveState);
         #endif
         #ifdef ENABLE_MQTT
         } else if (strcmp(topic, (char *)mqtt_intopic) == 0) {
@@ -1360,6 +1324,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
   void shortKeyPress() {
     DBG_OUTPUT_PORT.printf("Short button press\n");
     if (buttonState == false) {
+      prevmode = mode;
       setModeByStateString(BTN_MODE_SHORT);
       buttonState = true;
       #ifdef ENABLE_MQTT
@@ -1372,10 +1337,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         stateOn = true;
         if(!ha_send_data.active())  ha_send_data.once(5, tickerSendState);
       #endif
-      #ifdef ENABLE_STATE_SAVE_SPIFFS
-        if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-      #endif
     } else {
+      prevmode = mode;
       mode = OFF;
       buttonState = false;
       #ifdef ENABLE_MQTT
@@ -1388,15 +1351,13 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         stateOn = false;
         if(!ha_send_data.active())  ha_send_data.once(5, tickerSendState);
       #endif
-      #ifdef ENABLE_STATE_SAVE_SPIFFS
-        if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-      #endif
     }
   }
 
   // called when button is kept pressed for less than 2 seconds
   void mediumKeyPress() {
     DBG_OUTPUT_PORT.printf("Medium button press\n");
+    prevmode = mode;
     setModeByStateString(BTN_MODE_MEDIUM);
     #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =fire flicker").c_str());
@@ -1408,14 +1369,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
       stateOn = true;
       if(!ha_send_data.active())  ha_send_data.once(5, tickerSendState);
     #endif
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
-    #endif
   }
 
   // called when button is kept pressed for 2 seconds or more
   void longKeyPress() {
     DBG_OUTPUT_PORT.printf("Long button press\n");
+    prevmode = mode;
     setModeByStateString(BTN_MODE_LONG);
     #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =fireworks random").c_str());
@@ -1426,9 +1385,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
     #ifdef ENABLE_HOMEASSISTANT
      stateOn = true;
      if(!ha_send_data.active())  ha_send_data.once(5, tickerSendState);
-    #endif
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
     #endif
   }
 
@@ -1486,9 +1442,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
     #endif
     #ifdef ENABLE_HOMEASSISTANT
       if(!ha_send_data.active())  ha_send_data.once(5, tickerSendState);
-    #endif
-    #ifdef ENABLE_STATE_SAVE_SPIFFS
-      if(!spiffs_save_state.active()) spiffs_save_state.once(3, tickerSpiffsSaveState);
     #endif
 //    tcs.setConfig(MCU_LED_OFF, MCU_WHITE_OFF);
   }
@@ -1636,16 +1589,16 @@ bool writeStateFS(){
   if (!configFile) {
     DBG_OUTPUT_PORT.println("Failed!");
     updateFS = false;
-    spiffs_save_state.detach();
-    updateStateFS = false;
+    settings_save_state.detach();
+    updateState = false;
     return false;
   }
   serializeJson(json, DBG_OUTPUT_PORT);
   serializeJson(json, configFile);
   configFile.close();
   updateFS = false;
-  spiffs_save_state.detach();
-  updateStateFS = false;
+  settings_save_state.detach();
+  updateState = false;
   return true;
   //end save
 }

@@ -43,12 +43,7 @@ void updateLed (int led, int brightness) {
 
 // See: http://forum.mysensors.org/topic/85/phoneytv-for-vera-is-here/13
 void tv() {
-  checkForRequests();
-  if (exit_func) {
-    exit_func = false;
-    return;
-  }
-  
+  checkForRequests(); 
   if (timeToDip == false)
   {
     currentMillis = millis();
