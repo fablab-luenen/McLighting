@@ -158,8 +158,8 @@ Ticker settings_save_state;
 void tick()
 {
   //toggle state
-  int state = digitalRead(BUILTIN_LED);  // get the current state of GPIO1 pin
-  digitalWrite(BUILTIN_LED, !state);     // set pin to the opposite state
+  int state = digitalRead(LED_BUILTIN);  // get the current state of GPIO1 pin
+  digitalWrite(LED_BUILTIN, !state);     // set pin to the opposite state
 }
 
 #ifdef ENABLE_STATE_SAVE_EEPROM
@@ -269,7 +269,7 @@ void setup() {
   EEPROM.begin(512);
 
   // set builtin led pin as output
-  pinMode(BUILTIN_LED, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
   // button pin setup
 #ifdef ENABLE_BUTTON
   pinMode(ENABLE_BUTTON,INPUT_PULLUP);
@@ -428,8 +428,9 @@ DBG_OUTPUT_PORT.println("Starting....");
   DBG_OUTPUT_PORT.println("connected...yeey :)");
   ticker.detach();
   //keep LED on
-  digitalWrite(BUILTIN_LED, LOW);
-
+  digitalWrite(LED_BUILTIN, LOW);
+  //switch LED off
+  //digitalWrite(LED_BUILTIN, HIGH);
 
   // ***************************************************************************
   // Configure OTA
@@ -558,7 +559,6 @@ DBG_OUTPUT_PORT.println("Starting....");
   server.on("/esp_status", HTTP_GET, []() {
     DynamicJsonDocument jsonBuffer;
     JsonObject json = jsonBuffer.to<JsonObject>();
-  
     json["HOSTNAME"] = HOSTNAME;
     json["version"] = SKETCH_VERSION;
     json["heap"] = ESP.getFreeHeap();
@@ -649,6 +649,7 @@ DBG_OUTPUT_PORT.println("Starting....");
     
     String json_str;
     serializeJson(json, json_str);
+    jsonBuffer.clear();
     server.sendHeader("Access-Control-Allow-Origin", "*");
     server.send(200, "application/json", json_str);
   });
@@ -699,8 +700,7 @@ DBG_OUTPUT_PORT.println("Starting....");
   // ***************************************************************************
   server.on("/set_brightness", []() {
     getArgs();
-    prevmode = mode;
-    mode = BRIGHTNESS;
+    mode = SET_BRIGHTNESS;
     #ifdef ENABLE_MQTT
     mqtt_client.publish(mqtt_outtopic, String(String("OK %") + String(brightness)).c_str());
     #endif
@@ -724,8 +724,7 @@ DBG_OUTPUT_PORT.println("Starting....");
 
   server.on("/set_speed", []() {
     getArgs();
-    prevmode = mode;
-    mode = SETSPEED;
+    mode = SET_SPEED;
     #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String(String("OK ?") + String(ws2812fx_speed)).c_str());
     #endif
@@ -785,7 +784,6 @@ DBG_OUTPUT_PORT.println("Starting....");
   });
 
   server.on("/off", []() {
-    prevmode = mode;
     mode = OFF;
     //getArgs();
     getStatusJSON();
@@ -815,9 +813,9 @@ DBG_OUTPUT_PORT.println("Starting....");
   });
 
   server.on("/all", []() {
-    ws2812fx_mode = FX_MODE_STATIC;
-    mode = SET_MODE;
     getArgs();
+    ws2812fx_mode = FX_MODE_STATIC;
+    mode = SET_ALL;
     getStatusJSON();
     #ifdef ENABLE_MQTT
     mqtt_client.publish(mqtt_outtopic, String("OK =all").c_str());
@@ -832,9 +830,9 @@ DBG_OUTPUT_PORT.println("Starting....");
 
   #ifdef ENABLE_LEGACY_ANIMATIONS
     server.on("/wipe", []() {
-      ws2812fx_mode = FX_MODE_COLOR_WIPE;
-      mode = SET_MODE;
       getArgs();
+      ws2812fx_mode = FX_MODE_COLOR_WIPE;
+      mode = SET_ALL;
       getStatusJSON();
     #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =wipe").c_str());
@@ -848,9 +846,9 @@ DBG_OUTPUT_PORT.println("Starting....");
     });
   
     server.on("/rainbow", []() {
-      ws2812fx_mode = FX_MODE_RAINBOW;
-      mode = SET_MODE;
       getArgs();
+      ws2812fx_mode = FX_MODE_RAINBOW;
+      mode = SET_ALL;
       getStatusJSON();
     #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =rainbow").c_str());
@@ -864,9 +862,9 @@ DBG_OUTPUT_PORT.println("Starting....");
     });
   
     server.on("/rainbowCycle", []() {
-      ws2812fx_mode = FX_MODE_RAINBOW_CYCLE;
-      mode = SET_MODE;
       getArgs();
+      ws2812fx_mode = FX_MODE_RAINBOW_CYCLE;
+      mode = SET_ALL;
       getStatusJSON();
     #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =rainbowCycle").c_str());
@@ -880,9 +878,9 @@ DBG_OUTPUT_PORT.println("Starting....");
     });
   
     server.on("/theaterchase", []() {
-      ws2812fx_mode = FX_MODE_THEATER_CHASE;
-      mode = SET_MODE;
       getArgs();
+      ws2812fx_mode = FX_MODE_THEATER_CHASE;
+      mode = SET_ALL;
       getStatusJSON();
     #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =theaterchase").c_str());
@@ -896,9 +894,9 @@ DBG_OUTPUT_PORT.println("Starting....");
     });
   
     server.on("/twinkleRandom", []() {
-      ws2812fx_mode = FX_MODE_TWINKLE_RANDOM;
-      mode = SET_MODE;
       getArgs();
+      ws2812fx_mode = FX_MODE_TWINKLE_RANDOM;
+      mode = SET_ALL;
       getStatusJSON();
     #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =twinkleRandom").c_str());
@@ -912,9 +910,9 @@ DBG_OUTPUT_PORT.println("Starting....");
     });
     
     server.on("/theaterchaseRainbow", []() {
-      ws2812fx_mode = FX_MODE_THEATER_CHASE_RAINBOW;
-      mode = SET_MODE;
       getArgs();
+      ws2812fx_mode = FX_MODE_THEATER_CHASE_RAINBOW;
+      mode = SET_ALL;
       getStatusJSON();
     #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =theaterchaseRainbow").c_str());
@@ -930,7 +928,6 @@ DBG_OUTPUT_PORT.println("Starting....");
   
   #ifdef ENABLE_E131
     server.on("/e131", []() {
-      prevmode = mode;
       mode = E131;
       getStatusJSON();
     #ifdef ENABLE_MQTT
@@ -947,7 +944,6 @@ DBG_OUTPUT_PORT.println("Starting....");
   
   #ifdef ENABLE_TV  
     server.on("/tv", []() {
-    prevmode = mode;
     mode = TV;
     getStatusJSON();
     #ifdef ENABLE_MQTT
@@ -1016,7 +1012,6 @@ DBG_OUTPUT_PORT.println("Starting....");
       setModeByStateString(saved_state_string);
     }
   #endif
-  prevmode = mode;
   #ifdef ENABLE_BUTTON_GY33
     tcs.setConfig(MCU_LED_06, MCU_WHITE_ON);
 //    delay(2000);
@@ -1025,6 +1020,7 @@ DBG_OUTPUT_PORT.println("Starting....");
 
   #ifdef ENABLE_REMOTE
     irrecv.enableIRIn();  // Start the receiver
+    sprintf(last_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", prevmode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
   #endif
 }
 
@@ -1074,413 +1070,94 @@ void loop() {
   #endif
           
   // Simple statemachine that handles the different modes
+  if (mode != OFF) {
+    if(!strip.isRunning()) strip.start();
+  } 
+   
+  // Only for modes with WS2812FX functionality
+  if (( mode == AUTO)|| (mode == HOLD)) {
+    strip.service();
+  }
+  
+  if ((prevmode == AUTO) && (mode != AUTO)) { handleAutoStop(); }
+  
   if (mode == OFF) {
-    if(strip.isRunning()) strip.stop(); //should clear memory
+    if(strip.isRunning()) {
+      strip.strip_off();         // Workaround: to be shure,
+      delay(10);                 // that strip is really off. Sometimes strip.stop isn't enought
+      strip.stop();              // should clear memory
+    }
   }
   
   #ifdef ENABLE_TV
     if (mode == TV) {
-      if(!strip.isRunning()) strip.start();
       tv();
     }
   #endif
   
   #ifdef ENABLE_E131
-    if (mode == E131) {    
+    if (mode == E131) {
       handleE131();
     }
   #endif
+  
+  if (mode == SET_ALL) {
+    strip.setMode(ws2812fx_mode);
+    convertColors();
+    strip.setColors(0, hex_colors);
+    strip.setSpeed(convertSpeed(ws2812fx_speed));
+    strip.setBrightness(brightness);
+    prevmode = SET_ALL;
+    mode = HOLD;
+    strip.trigger();
+  }  
+  
   if (mode == SET_MODE) {
-    DBG_OUTPUT_PORT.printf("SET_MODE: %d %d\n", ws2812fx_mode, mode);
     strip.setMode(ws2812fx_mode);
     prevmode = SET_MODE;
     mode = HOLD;
     strip.trigger();
-  }  
-  if (mode == SETCOLOR) {
+  }
+    
+  if (mode == SET_COLOR) {
     convertColors();
     strip.setColors(0, hex_colors);
-    mode = (prevmode == HOLD) ? HOLD : prevmode;
-    prevmode = SETCOLOR;
+    mode = prevmode;
+    prevmode = SET_COLOR;
     if (mode == HOLD) strip.trigger();
   }
-  if (mode == SETSPEED) {
+  if (mode == SET_SPEED) {
     strip.setSpeed(convertSpeed(ws2812fx_speed));
-    mode = (prevmode == HOLD) ? HOLD : prevmode;
-    prevmode = SETSPEED;
+    mode = prevmode;
+    prevmode = SET_SPEED;
     if (mode == HOLD) strip.trigger();
   }
-  if (mode == BRIGHTNESS) {
+  if (mode == SET_BRIGHTNESS) {
     strip.setBrightness(brightness);
-    mode = (prevmode == HOLD) ? HOLD : prevmode;
-    prevmode = BRIGHTNESS;
+    mode = prevmode;
+    prevmode = SET_BRIGHTNESS;
     if (mode == HOLD) strip.trigger();
   }
-   
-  if (mode == HOLD || mode == CUSTOM) {
-    if(!strip.isRunning()) strip.start();
- //   if (prevmode == SET_MODE) prevmode = HOLD;
-  }
-  
-  // Only for modes with WS2812FX functionality
-  if (mode == AUTO || mode == HOLD) {
-    strip.service();
-  }
+ 
   if (prevmode != mode) {
-    DBG_OUTPUT_PORT.printf("Mode: %i, PrevMode: %i\r\n", mode, prevmode);
-    if(!settings_save_state.active()) settings_save_state.once(5, tickerSaveState);
-    if (prevmode == AUTO) handleAutoStop();
-    prevmode = mode;
+    if (mode != AUTO) {  // do not save if AUTO Mode is set
+      if(!settings_save_state.active()) settings_save_state.once(5, tickerSaveState);
+      sprintf(last_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", prevmode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
+    }
   }
-  if (updateState) {
+  if (updateState){
   #ifdef ENABLE_STATE_SAVE_SPIFFS
       (writeStateFS()) ? DBG_OUTPUT_PORT.println(" Success!") : DBG_OUTPUT_PORT.println(" Failure!");
   #endif
   #ifdef ENABLE_STATE_SAVE_EEPROM
-      char state[66];
-      sprintf(state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
-      writeEEPROM(256, 66, state); // 256 --> last_state (reserved 66 bytes)
+      writeEEPROM(256, 66, last_state); // 256 --> last_state (reserved 66 bytes)
       EEPROM.commit();
       updateState = false;
       settings_save_state.detach();
   #endif
   }
-
+  prevmode = mode;
   #ifdef ENABLE_REMOTE
-    if (irrecv.decode(&results)) {
-      DBG_OUTPUT_PORT.print("IR Code: 0x");
-      DBG_OUTPUT_PORT.print(uint64ToString(results.value, HEX));
-      DBG_OUTPUT_PORT.println("");
-      if (results.value == rmt_commands[REPEATCMD]) { //Repeat
-        results.value = last_remote_cmd;
-        chng = 5;
-      } else {
-        chng = 1;       
-      }
-      if (results.value == rmt_commands[ON_OFF]) {   // ON/OFF TOGGLE
-        last_remote_cmd = 0;
-        if (mode == OFF) {
-            prevmode = mode;
-            setModeByStateString(beforeoffauto_state);
-        } else {
-          if (mode == AUTO) {
-            handleAutoStop();
-          } else {
-            sprintf(beforeoffauto_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
-          }
-          prevmode = mode;
-          mode = OFF;
-        }
-      }
-      if (results.value == rmt_commands[BRIGHTNESS_UP]) { //Brightness Up
-        last_remote_cmd = results.value;
-        if (brightness + chng <= 255) {
-          brightness = brightness + chng;
-          prevmode = mode;
-          mode = BRIGHTNESS;
-        }
-      }
-      if (results.value == rmt_commands[BRIGHTNESS_DOWN]) { //Brightness down
-        last_remote_cmd = results.value;
-        if (brightness - chng >= 0) {
-          brightness = brightness - chng;
-          prevmode = mode;
-          mode = BRIGHTNESS;
-        }
-      }
-      if (results.value == rmt_commands[SPEED_UP]) { //Speed Up
-        last_remote_cmd = results.value;
-        if (ws2812fx_speed + chng <= 255) {
-          ws2812fx_speed = ws2812fx_speed + chng;
-          prevmode = mode;
-          mode = SETSPEED;
-        }
-      }
-      if (results.value == rmt_commands[SPEED_DOWN]) { //Speed down
-        last_remote_cmd = results.value;
-        if (ws2812fx_speed - chng >= 0) {
-          ws2812fx_speed = ws2812fx_speed - chng;
-          prevmode = mode;
-          mode = SETSPEED;
-        }
-      }
-      if (mode == HOLD) {
-        if (results.value == rmt_commands[RED_UP]) { //Red Up
-          last_remote_cmd = results.value;
-          if (selected_color == 1) {
-            if (main_color.red + chng <= 255) {
-              main_color.red = main_color.red + chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-          if (selected_color == 2) {
-            if (back_color.red + chng <= 255) {
-              back_color.red = back_color.red + chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-          if (selected_color == 3) {
-            if (xtra_color.red + chng <= 255) {
-              xtra_color.red = xtra_color.red + chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-        }
-        if (results.value == rmt_commands[RED_DOWN]) { //Red down
-          last_remote_cmd = results.value;
-          if (selected_color == 1) {
-            if (main_color.red - chng >= 0) {
-              main_color.red = main_color.red - chng;
-              prevmode = mode;
-              mode = SETCOLOR; 
-            }
-          }
-          if (selected_color == 2) {
-            if (back_color.red - chng >= 0) {
-              back_color.red = back_color.red - chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-          if (selected_color == 3) {
-            if (xtra_color.red - chng >= 0) {
-              xtra_color.red = xtra_color.red - chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-        }
-        if (results.value == rmt_commands[GREEN_UP]) { //Green Up
-          last_remote_cmd = results.value;
-          if (selected_color == 1) {
-            if (main_color.green + chng <= 255) {
-              main_color.green = main_color.green + chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-          if (selected_color == 2) {
-            if (back_color.green + chng <= 255) {
-              back_color.green = back_color.green + chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-          if (selected_color == 3) {
-            if (xtra_color.green + chng <= 255) {
-              xtra_color.green = xtra_color.green + chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-        }
-        if (results.value == rmt_commands[GREEN_DOWN]) { //green down
-          last_remote_cmd = results.value;
-          if (selected_color == 1) {
-            if (main_color.green - chng >= 0) {
-              main_color.green = main_color.green - chng;;
-              prevmode = mode;
-              mode = SETCOLOR; 
-            }
-          }
-          if (selected_color == 2) {
-            if (back_color.green - chng >= 0) {
-              back_color.green = back_color.green - chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-          if (selected_color == 3) {
-            if (xtra_color.green - chng >= 0) {
-              xtra_color.green = xtra_color.green - chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-        }
-        if (results.value == rmt_commands[BLUE_UP]) { //Blue Up
-          last_remote_cmd = results.value;
-          if (selected_color == 1) {
-            if (main_color.blue + chng <= 255) {
-              main_color.blue = main_color.blue + chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-          if (selected_color == 2) {
-            if (back_color.blue + chng <= 255) {
-              back_color.blue = back_color.blue + chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-          if (selected_color == 3) {
-            if (xtra_color.blue + chng <= 255) {
-              xtra_color.blue = xtra_color.blue + chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-        }
-        if (results.value == rmt_commands[BLUE_DOWN]) { //BLUE down
-          last_remote_cmd = results.value;
-          if (selected_color == 1) {
-            if (main_color.blue - chng >= 0) {
-              main_color.blue = main_color.blue - chng;
-              prevmode = mode;
-              mode = SETCOLOR; 
-            }
-          }
-          if (selected_color == 2) {
-            if (back_color.blue - chng >= 0) {
-              back_color.blue = back_color.blue - chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-          if (selected_color == 3) {
-            if (xtra_color.blue - chng >= 0) {
-              xtra_color.blue = xtra_color.blue - chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-        }
-        if (results.value == rmt_commands[WHITE_UP]) { //White Up
-          last_remote_cmd = results.value;
-          if (selected_color == 1) {
-            if (main_color.white + chng <= 255) {
-              main_color.white = main_color.white + chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-          if (selected_color == 2) {
-            if (back_color.white + chng <= 255) {
-              back_color.white = back_color.white + chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-          if (selected_color == 3) {
-            if (xtra_color.white + chng <= 255) {
-              xtra_color.white = xtra_color.white + chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-        }
-        if (results.value == rmt_commands[WHITE_DOWN]) { //White down
-          last_remote_cmd = results.value;
-          if (selected_color == 1) {
-            if (main_color.white - chng >= 0) {
-              main_color.white = main_color.white - chng;
-              prevmode = mode;
-              mode = SETCOLOR; 
-            }
-          }
-          if (selected_color == 2) {
-            if (back_color.white - chng >= 0) {
-              back_color.white = back_color.white - chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-          if (selected_color == 3) {
-            if (xtra_color.white - chng >= 0) {
-              xtra_color.white = xtra_color.white - chng;
-              prevmode = mode;
-              mode = SETCOLOR;
-            }
-          }
-        }
-        if (results.value == rmt_commands[MODE_UP]) { //Mode Up
-          last_remote_cmd = results.value;
-          if (ws2812fx_mode < strip.getModeCount()-1) {
-            ws2812fx_mode = ws2812fx_mode + 1;
-            mode = SET_MODE;
-          }
-        }
-        if (results.value == rmt_commands[MODE_DOWN]) { //Mode down
-          last_remote_cmd = results.value;
-          if (ws2812fx_mode > 0) {
-            ws2812fx_mode = ws2812fx_mode - 1;
-            mode = SET_MODE;
-          }
-        }
-        if (results.value == rmt_commands[COL_M]) { // Select Main Color
-          last_remote_cmd = 0;
-          selected_color = 1;
-        } 
-        if (results.value == rmt_commands[COL_B]) { // Select Back Color
-          last_remote_cmd = 0;
-          selected_color = 2;
-        } 
-        if (results.value == rmt_commands[COL_X]) { // Select Extra Color
-          last_remote_cmd = 0;
-          selected_color = 3;
-        }
-      }
-      if (results.value == rmt_commands[AUTOMODE]) { // Toggle Automode
-        last_remote_cmd = 0;
-        if (mode != AUTO) {
-            handleAutoStart();
-        } else {
-            handleAutoStop();
-        }
-      }
-    #ifdef ENABLE_TV
-      if (results.value == rmt_commands[CUST_1]) { // Select TV Mode
-        last_remote_cmd = 0;
-        if (mode == TV) {
-          prevmode = mode;
-          setModeByStateString(beforeoffauto_state);
-        } else {
-          if (mode==AUTO) {
-            handleAutoStop();
-          }
-          sprintf(beforeoffauto_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
-          prevmode = mode;
-          mode = TV;
-        }  
-      }
-    #endif 
-      if (results.value == rmt_commands[CUST_2]) { // Select Custom Mode 2
-        last_remote_cmd = 0;
-        if (mode==AUTO) {
-          handleAutoStop();
-        }
-        ws2812fx_mode = 12;
-        mode = SET_MODE;
-      } 
-      if (results.value == rmt_commands[CUST_3]) { // Select Custom Mode 3
-        last_remote_cmd = 0;
-        if (mode==AUTO) {
-          handleAutoStop();
-        }
-        ws2812fx_mode = 48;
-        mode = SET_MODE;
-      } 
-      if (results.value == rmt_commands[CUST_4]) { // Select Custom Mode 4
-        last_remote_cmd = 0;
-        if (mode==AUTO) {
-          handleAutoStop();
-        }
-        ws2812fx_mode = 21;
-        mode = SET_MODE; 
-      }
-      if (results.value == rmt_commands[CUST_5]) { // Select Custom Mode 5
-        last_remote_cmd = 0;
-        if (mode==AUTO) {
-          handleAutoStop();
-        }
-        ws2812fx_mode = 46;
-        mode = SET_MODE;
-      } 
-      irrecv.resume();  // Receive the next value
-    }
+    handleRemote();
   #endif
 }

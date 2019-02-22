@@ -1,10 +1,12 @@
 // ***************************************************************************
 // Request handlers
 // ***************************************************************************
-void handleAutoStart(void);
-#ifdef ENABLE_E131
-void checkForRequests(void); //prototype
 
+// Prototypes
+void   handleAutoStart(void);
+String listStatusJSON(void);
+
+#ifdef ENABLE_E131
 void handleE131(){
   if (!e131.isEmpty())
   {
@@ -31,7 +33,6 @@ void handleE131(){
       strip.setPixelColor(i + multipacketOffset, data[j], data[j + 1], data[j + 2]);
     }
     strip.show();
-    checkForRequests();
   }
 }
 #endif
@@ -140,38 +141,8 @@ void getArgs() {
   xtra_color.blue = constrain(xtra_color.blue, 0, 255);
   xtra_color.white = constrain(xtra_color.blue, 0, 255);
   convertColors();
-
-  DBG_OUTPUT_PORT.print("Mode: ");
-  DBG_OUTPUT_PORT.print(mode);
-  DBG_OUTPUT_PORT.print(", Main Color: ");
-  DBG_OUTPUT_PORT.print(main_color.red);
-  DBG_OUTPUT_PORT.print(", ");
-  DBG_OUTPUT_PORT.print(main_color.green);
-  DBG_OUTPUT_PORT.print(", ");
-  DBG_OUTPUT_PORT.print(main_color.blue);
-  DBG_OUTPUT_PORT.print(", ");
-  DBG_OUTPUT_PORT.print(main_color.white);
-  DBG_OUTPUT_PORT.print(", Back Color: ");
-  DBG_OUTPUT_PORT.print(back_color.red);
-  DBG_OUTPUT_PORT.print(", ");
-  DBG_OUTPUT_PORT.print(back_color.green);
-  DBG_OUTPUT_PORT.print(", ");
-  DBG_OUTPUT_PORT.print(back_color.blue);
-  DBG_OUTPUT_PORT.print(", ");
-  DBG_OUTPUT_PORT.print(back_color.white);
-  DBG_OUTPUT_PORT.print(", Xtra Color: ");
-  DBG_OUTPUT_PORT.print(xtra_color.red);
-  DBG_OUTPUT_PORT.print(", ");
-  DBG_OUTPUT_PORT.print(xtra_color.green);
-  DBG_OUTPUT_PORT.print(", ");
-  DBG_OUTPUT_PORT.print(xtra_color.blue);
-  DBG_OUTPUT_PORT.print(", ");
-  DBG_OUTPUT_PORT.print(xtra_color.white);
-
-  DBG_OUTPUT_PORT.print(", Speed:");
-  DBG_OUTPUT_PORT.print(ws2812fx_speed);
-  DBG_OUTPUT_PORT.print(", Brightness:");
-  DBG_OUTPUT_PORT.println(brightness);
+  DBG_OUTPUT_PORT.print("Get Args: ");
+  DBG_OUTPUT_PORT.println(listStatusJSON());
 }
 
 
@@ -199,8 +170,7 @@ void handleSetMainColor(uint8_t * mypayload) {
   main_color.green = ((rgb >> 8) & 0xFF);
   main_color.blue = ((rgb >> 0) & 0xFF);
 //  strip.setColor(main_color.red, main_color.green, main_color.blue);
-  prevmode = mode;
-  mode = SETCOLOR;
+  mode = SET_COLOR;
 }
 
 void handleSetBackColor(uint8_t * mypayload) {
@@ -210,8 +180,7 @@ void handleSetBackColor(uint8_t * mypayload) {
   back_color.red = ((rgb >> 16) & 0xFF);
   back_color.green = ((rgb >> 8) & 0xFF);
   back_color.blue = ((rgb >> 0) & 0xFF);
-  prevmode = mode;
-  mode = SETCOLOR;
+  mode = SET_COLOR;
 }
 void handleSetXtraColor(uint8_t * mypayload) {
   // decode rgb data
@@ -220,8 +189,7 @@ void handleSetXtraColor(uint8_t * mypayload) {
   xtra_color.red = ((rgb >> 16) & 0xFF);
   xtra_color.green = ((rgb >> 8) & 0xFF);
   xtra_color.blue = ((rgb >> 0) & 0xFF);
-  prevmode = mode;
-  mode = SETCOLOR;
+  mode = SET_COLOR;
 }
 
 void handleSetAllMode(uint8_t * mypayload) {
@@ -233,7 +201,7 @@ void handleSetAllMode(uint8_t * mypayload) {
   main_color.blue = ((rgb >> 0) & 0xFF);
   DBG_OUTPUT_PORT.printf("WS: Set all leds to main color: R: [%u] G: [%u] B: [%u] W: [%u]\n", main_color.red, main_color.green, main_color.blue, main_color.white);
   ws2812fx_mode = FX_MODE_STATIC;
-  mode = SET_MODE;
+  mode = SET_ALL;
 }
 
 void handleSetSingleLED(uint8_t * mypayload, uint8_t firstChar = 0) {
@@ -345,23 +313,8 @@ void setModeByStateString(String saved_state_string) {
   str_white = getValue(saved_state_string, '|', 16);
   xtra_color.white = str_white.toInt();
   convertColors();
-  DBG_OUTPUT_PORT.printf("Mode: %d\n", mode);
-  DBG_OUTPUT_PORT.printf("ws2812fx_mode: %d\n", ws2812fx_mode);
-  DBG_OUTPUT_PORT.printf("ws2812fx_speed: %d\n", ws2812fx_speed);
-  DBG_OUTPUT_PORT.printf("brightness: %d\n", brightness);
-  DBG_OUTPUT_PORT.printf("main_color.red: %d\n", main_color.red);
-  DBG_OUTPUT_PORT.printf("main_color.green: %d\n", main_color.green);
-  DBG_OUTPUT_PORT.printf("main_color.blue: %d\n", main_color.blue);
-  DBG_OUTPUT_PORT.printf("main_color.white: %d\n", main_color.white);
-  DBG_OUTPUT_PORT.printf("back_color.red: %d\n", back_color.red);
-  DBG_OUTPUT_PORT.printf("back_color.green: %d\n", back_color.green);
-  DBG_OUTPUT_PORT.printf("back_color.blue: %d\n", back_color.blue);
-  DBG_OUTPUT_PORT.printf("back_color.white: %d\n", back_color.white);
-  DBG_OUTPUT_PORT.printf("xtra_color.red: %d\n", xtra_color.red);
-  DBG_OUTPUT_PORT.printf("xtra_color.green: %d\n", xtra_color.green);
-  DBG_OUTPUT_PORT.printf("xtra_color.blue: %d\n", xtra_color.blue);
-  DBG_OUTPUT_PORT.printf("xtra_color.white: %d\n", xtra_color.white);  
-
+  DBG_OUTPUT_PORT.print("Set to last_state: ");
+  DBG_OUTPUT_PORT.println(listStatusJSON());
   strip.setMode(ws2812fx_mode);
   strip.setSpeed(convertSpeed(ws2812fx_speed));
   strip.setBrightness(brightness);
@@ -371,7 +324,6 @@ void setModeByStateString(String saved_state_string) {
 
 void handleSetNamedMode(String str_mode) {
     if (str_mode.startsWith("=off") or str_mode.startsWith("/off")) {
-      prevmode = mode;
       mode = OFF;
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = false;
@@ -380,7 +332,6 @@ void handleSetNamedMode(String str_mode) {
 
 #ifdef ENABLE_TV
     if (str_mode.startsWith("=tv") or str_mode.startsWith("/tv")) {
-      prevmode = mode;
       mode = TV;
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
@@ -391,7 +342,6 @@ void handleSetNamedMode(String str_mode) {
 #ifdef ENABLE_E131
     if (str_mode.startsWith("=e131") or str_mode.startsWith("/e131")) {
       if(strip.isRunning()) strip.stop();
-      prevmode = mode;
       mode = E131;
       #ifdef ENABLE_HOMEASSISTANT
         stateOn = true;
@@ -466,8 +416,7 @@ void handleSetWS2812FXMode(uint8_t * mypayload) {
 String listStatusJSON(void) {
   uint8_t tmp_mode = (mode == SET_MODE) ? (uint8_t) ws2812fx_mode : strip.getMode();
   
-  const size_t bufferSize = JSON_ARRAY_SIZE(3) + JSON_OBJECT_SIZE(6) + 500;
-  DynamicJsonDocument jsonBuffer(bufferSize);
+  DynamicJsonDocument jsonBuffer(JSON_OBJECT_SIZE(6) + JSON_ARRAY_SIZE(12)  + 150);
   JsonObject root = jsonBuffer.to<JsonObject>();
   root["mode"] = (uint8_t) mode;
   root["ws2812fx_mode"] = tmp_mode;
@@ -487,10 +436,10 @@ String listStatusJSON(void) {
   color.add(xtra_color.red);
   color.add(xtra_color.green);
   color.add(xtra_color.blue);
-  
+   
   String json;
   serializeJson(root, json);
-  
+  jsonBuffer.clear();
   return json;
 }
 
@@ -500,8 +449,7 @@ void getStatusJSON() {
 }
 
 String listModesJSON(void) {
-  const size_t bufferSize = JSON_ARRAY_SIZE(strip.getModeCount()+1) + strip.getModeCount()*JSON_OBJECT_SIZE(2) + 1000;
-  DynamicJsonDocument jsonBuffer(bufferSize);
+  DynamicJsonDocument jsonBuffer(JSON_ARRAY_SIZE(strip.getModeCount() + 3) + strip.getModeCount()*JSON_OBJECT_SIZE(2) + 150);
   JsonArray json = jsonBuffer.to<JsonArray>();
   JsonObject objectoff = json.createNestedObject();
   objectoff["mode"] = "off";
@@ -525,6 +473,7 @@ String listModesJSON(void) {
   
   String json_str;
   serializeJson(json, json_str);
+  jsonBuffer.clear();
   return json_str;
 }
 
@@ -595,20 +544,18 @@ void autoTick() {
 
 void handleAutoStart() {
   if (mode!=AUTO) {
-    sprintf(beforeoffauto_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
+    DBG_OUTPUT_PORT.println("Starting AUTO mode."); 
+    sprintf(last_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
     mode = AUTO;
     autoCount = 0;
     autoTick();
-    strip.start();
   }
 }
 
 void handleAutoStop() {
-  if (mode==AUTO) {
+    DBG_OUTPUT_PORT.println("Stopping AUTO mode."); 
     autoTicker.detach();
-    strip.stop();
-    setModeByStateString(beforeoffauto_state);
-  }
+    setModeByStateString(last_state);
 }
 
 void Dbg_Prefix(bool mqtt, uint8_t num) {
@@ -649,8 +596,7 @@ void checkpayload(uint8_t * payload, bool mqtt = false, uint8_t num = 0) {
   if (payload[0] == '?') {
     uint8_t d = (uint8_t) strtol((const char *) &payload[1], NULL, 10);
     ws2812fx_speed = constrain(d, 0, 255);
-    prevmode = mode;
-    mode = SETSPEED;
+    mode = SET_SPEED;
     Dbg_Prefix(mqtt, num);
     DBG_OUTPUT_PORT.printf("Set speed to: [%u]\n", ws2812fx_speed);
     #ifdef ENABLE_HOMEASSISTANT
@@ -669,8 +615,7 @@ void checkpayload(uint8_t * payload, bool mqtt = false, uint8_t num = 0) {
   if (payload[0] == '%') {
     uint8_t b = (uint8_t) strtol((const char *) &payload[1], NULL, 10);
     brightness = constrain(b, 0, 255);
-    prevmode = mode;
-    mode = BRIGHTNESS;
+    mode = SET_BRIGHTNESS;
     Dbg_Prefix(mqtt, num);
     DBG_OUTPUT_PORT.printf("Set brightness to: [%u]\n", brightness);
     #ifdef ENABLE_MQTT
@@ -868,17 +813,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
   }
 }
 
-#if defined(ENABLE_TV) || defined(ENABLE_E131)
-  void checkForRequests() {
-    webSocket.loop();
-    server.handleClient();
-    #ifdef ENABLE_MQTT
-    mqtt_client.loop();
-    #endif
-  }
-#endif
-
-
 // ***************************************************************************
 // MQTT callback / connection handler
 // ***************************************************************************
@@ -944,8 +878,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
     }
 
     void sendState() {
-      const size_t bufferSize = JSON_OBJECT_SIZE(3) + JSON_OBJECT_SIZE(6) + 500;
-      DynamicJsonDocument jsonBuffer(bufferSize);
+      DynamicJsonDocument jsonBuffer(JSON_OBJECT_SIZE(6) + JSON_OBJECT_SIZE(12) + 150);
       JsonObject root = jsonBuffer.to<JsonObject>();
 
       root["state"] = (stateOn) ? on_cmd : off_cmd;
@@ -988,6 +921,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
       #endif
       char buffer[measureJson(root) + 1];
       serializeJson(root, buffer, sizeof(buffer));
+      jsonBuffer.clear();
       #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_ha_state_out.c_str(), buffer, true);
       DBG_OUTPUT_PORT.printf("MQTT: Send [%s]: %s\n", mqtt_ha_state_out.c_str(), buffer);
@@ -1002,12 +936,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
     }
 
     bool processJson(char* message) {
-      const size_t bufferSize = JSON_OBJECT_SIZE(3) + JSON_OBJECT_SIZE(5) + 150;
-      DynamicJsonDocument jsonBuffer(bufferSize);
+      DynamicJsonDocument jsonBuffer(JSON_OBJECT_SIZE(5) + JSON_OBJECT_SIZE(12) + 150);
       DeserializationError error = deserializeJson(jsonBuffer, message);
       if (error) {
         DBG_OUTPUT_PORT.print("parseObject() failed: ");
         DBG_OUTPUT_PORT.println(error.c_str());
+        jsonBuffer.clear();
         return false;
       }
       //DBG_OUTPUT_PORT.println("JSON ParseObject() done!");
@@ -1023,8 +957,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         else if (strcmp(state_in, off_cmd) == 0) {
           stateOn = false;
           animation_on = false;
-          prevmode = mode;
           mode = OFF;
+          jsonBuffer.clear();
           return true;
         }
       }
@@ -1043,17 +977,15 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         xtra_color.green = (uint8_t) color["g3"];
         xtra_color.blue = (uint8_t) color["b3"];
         xtra_color.white = (uint8_t) color["w3"];
-        prevmode = mode;
-        mode = SETCOLOR;
+        mode = SET_COLOR;
       }
 
       if (root.containsKey("speed")) {
         uint8_t json_speed = constrain((uint8_t) root["speed"], 0, 255);
         if (json_speed != ws2812fx_speed) {
           ws2812fx_speed = json_speed;
-          //if(stateOn) mode = SETSPEED;
-          prevmode = mode;
-          mode = SETSPEED;
+          //if(stateOn) mode = SET_SPEED;
+          mode = SET_SPEED;
         }
       }
 
@@ -1062,15 +994,13 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         color_temp = (uint16_t) root["color_temp"];
         unsigned int kelvin  = 1000000 / color_temp;
         main_color = temp2rgb(kelvin);
-        prevmode = mode;
-        mode = SETCOLOR;
+        mode = SET_COLOR;
       }
 
       if (root.containsKey("brightness")) {
         uint8_t json_brightness = constrain((uint8_t) root["brightness"], 0, 255); //fix #224
         if (json_brightness != brightness) {
-          prevmode = mode;
-          mode = BRIGHTNESS;
+          mode = SET_BRIGHTNESS;
         }
       }
 
@@ -1160,7 +1090,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
           ha_send_data.detach();
           mqtt_client.subscribe(mqtt_ha_state_in.c_str(), qossub);
           #ifdef MQTT_HOME_ASSISTANT_SUPPORT
-            DynamicJsonDocument jsonBuffer(JSON_ARRAY_SIZE(strip.getModeCount()) + JSON_OBJECT_SIZE(12) + 1500);
+            DynamicJsonDocument jsonBuffer(JSON_ARRAY_SIZE(strip.getModeCount()) + JSON_OBJECT_SIZE(12) + 150);
             JsonObject json = jsonBuffer.to<JsonObject>();
             json["name"] = HOSTNAME;
             #ifdef MQTT_HOME_ASSISTANT_0_84_SUPPORT
@@ -1191,6 +1121,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
             #endif
             char buffer[measureJson(json) + 1];
             serializeJson(json, buffer, sizeof(buffer));
+            jsonBuffer.clear();
             mqtt_client.publish(String("homeassistant/light/" + String(HOSTNAME) + "/config").c_str(), buffer, true);
           #endif
         #endif
@@ -1253,7 +1184,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         uint16_t packetIdSub2 = amqttClient.subscribe((char *)mqtt_ha_state_in.c_str(), qossub);
         DBG_OUTPUT_PORT.printf("Subscribing at QoS %d, packetId: ", qossub); DBG_OUTPUT_PORT.println(packetIdSub2);
         #ifdef MQTT_HOME_ASSISTANT_SUPPORT
-          DynamicJsonDocument jsonBuffer(JSON_ARRAY_SIZE(strip.getModeCount()) + JSON_OBJECT_SIZE(12) + 1500);
+          DynamicJsonDocument jsonBuffer(JSON_ARRAY_SIZE(strip.getModeCount()) + JSON_OBJECT_SIZE(12) + 150);
           JsonObject json = jsonBuffer.to<JsonObject>();
           json["name"] = HOSTNAME;
           #ifdef MQTT_HOME_ASSISTANT_0_84_SUPPORT
@@ -1284,6 +1215,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
           #endif
           char buffer[measureJson(json) + 1];
           serializeJson(json, buffer, sizeof(buffer));
+          jsonBuffer.clear();
           DBG_OUTPUT_PORT.println(buffer);
           amqttClient.publish(String("homeassistant/light/" + String(HOSTNAME) + "/config").c_str(), qospub, true, buffer);
         #endif
@@ -1324,7 +1256,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
   void shortKeyPress() {
     DBG_OUTPUT_PORT.printf("Short button press\n");
     if (buttonState == false) {
-      prevmode = mode;
       setModeByStateString(BTN_MODE_SHORT);
       buttonState = true;
       #ifdef ENABLE_MQTT
@@ -1338,7 +1269,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         if(!ha_send_data.active())  ha_send_data.once(5, tickerSendState);
       #endif
     } else {
-      prevmode = mode;
       mode = OFF;
       buttonState = false;
       #ifdef ENABLE_MQTT
@@ -1357,7 +1287,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
   // called when button is kept pressed for less than 2 seconds
   void mediumKeyPress() {
     DBG_OUTPUT_PORT.printf("Medium button press\n");
-    prevmode = mode;
     setModeByStateString(BTN_MODE_MEDIUM);
     #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =fire flicker").c_str());
@@ -1374,7 +1303,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
   // called when button is kept pressed for 2 seconds or more
   void longKeyPress() {
     DBG_OUTPUT_PORT.printf("Long button press\n");
-    prevmode = mode;
     setModeByStateString(BTN_MODE_LONG);
     #ifdef ENABLE_MQTT
       mqtt_client.publish(mqtt_outtopic, String("OK =fireworks random").c_str());
@@ -1509,6 +1437,7 @@ bool writeConfigFS(bool saveConfig){
 
     serializeJson(json, DBG_OUTPUT_PORT);
     serializeJson(json, configFile);
+    jsonBuffer.clear();
     configFile.close();
     updateFS = false;
     return true;
@@ -1532,7 +1461,7 @@ bool readConfigFS() {
       size_t size = configFile.size();
       std::unique_ptr<char[]> buf(new char[size]);
       configFile.readBytes(buf.get(), size);
-      DynamicJsonDocument jsonBuffer(JSON_OBJECT_SIZE(4)+300);
+      DynamicJsonDocument jsonBuffer(JSON_OBJECT_SIZE(4) + 150);
       DeserializationError error = deserializeJson(jsonBuffer, buf.get());
       DBG_OUTPUT_PORT.print("Config: ");
       if (!error) {
@@ -1544,10 +1473,12 @@ bool readConfigFS() {
         strcpy(mqtt_user, json["mqtt_user"]);
         strcpy(mqtt_pass, json["mqtt_pass"]);
         updateFS = false;
+        jsonBuffer.clear();
         return true;
       } else {
         DBG_OUTPUT_PORT.print("Failed to load json config: ");
         DBG_OUTPUT_PORT.println(error.c_str());
+        jsonBuffer.clear();
       }
     } else {
       DBG_OUTPUT_PORT.println("Failed to open /config.json");
@@ -1565,25 +1496,6 @@ bool writeStateFS(){
   updateFS = true;
   //save the strip state to FS JSON
   DBG_OUTPUT_PORT.print("Saving cfg: ");
-  DynamicJsonDocument jsonBuffer;
-  JsonObject json = jsonBuffer.to<JsonObject>();
-  json["mode"] = static_cast<int>(mode);
-  json["strip_mode"] = (int) strip.getMode();
-  json["brightness"] = brightness;
-  json["speed"] = ws2812fx_speed;
-  json["red"] = main_color.red;
-  json["green"] = main_color.green;
-  json["blue"] = main_color.blue;
-  json["white"] = main_color.white;
-  json["red2"] = back_color.red;
-  json["green2"] = back_color.green;
-  json["blue2"] = back_color.blue;
-  json["white2"] = back_color.white;
-  json["red3"] = xtra_color.red;
-  json["green3"] = xtra_color.green;
-  json["blue3"] = xtra_color.blue;
-  json["white3"] = xtra_color.white;
-
   //SPIFFS.remove("/stripstate.json") ? DBG_OUTPUT_PORT.println("removed file") : DBG_OUTPUT_PORT.println("failed removing file");
   File configFile = SPIFFS.open("/stripstate.json", "w");
   if (!configFile) {
@@ -1593,8 +1505,9 @@ bool writeStateFS(){
     updateState = false;
     return false;
   }
-  serializeJson(json, DBG_OUTPUT_PORT);
-  serializeJson(json, configFile);
+  DBG_OUTPUT_PORT.print("Write cfg: ");
+  DBG_OUTPUT_PORT.println(listStatusJSON());
+  configFile.print(listStatusJSON());
   configFile.close();
   updateFS = false;
   settings_save_state.detach();
@@ -1616,29 +1529,28 @@ bool readStateFS() {
       // Allocate a buffer to store contents of the file.
       std::unique_ptr<char[]> buf(new char[size]);
       configFile.readBytes(buf.get(), size);
-      DynamicJsonDocument jsonBuffer(JSON_OBJECT_SIZE(7)+200);
+      DynamicJsonDocument jsonBuffer(JSON_OBJECT_SIZE(5) + JSON_ARRAY_SIZE(12) + 150);
       DeserializationError error = deserializeJson(jsonBuffer, buf.get());
       if (!error) {
         JsonObject json = jsonBuffer.as<JsonObject>();
         serializeJson(json, DBG_OUTPUT_PORT);
         mode = static_cast<MODE>((int) json["mode"]);
-        ws2812fx_mode = json["strip_mode"];
-        brightness = json["brightness"];
+        ws2812fx_mode = json["ws2812fx_mode"];
         ws2812fx_speed = json["speed"];
-        main_color.red = json["red"];
-        main_color.green = json["green"];
-        main_color.blue = json["blue"];
-        main_color.white = json["white"];
-        back_color.red = json["red2"];
-        back_color.green = json["green2"];
-        back_color.blue = json["blue2"];
-        back_color.white = json["white2"];
-        xtra_color.red = json["red3"];
-        xtra_color.green = json["green3"];
-        xtra_color.blue = json["blue3"];
-        xtra_color.white = json["white3"];
+        brightness = json["brightness"];
+        main_color.white = (uint8_t) json["color"][0];
+        main_color.red = (uint8_t) json["color"][1];
+        main_color.green = (uint8_t) json["color"][2];
+        main_color.blue = (uint8_t) json["color"][3];
+        back_color.white = (uint8_t) json["color"][4];
+        back_color.red = (uint8_t) json["color"][5];
+        back_color.green = (uint8_t) json["color"][6];
+        back_color.blue = (uint8_t) json["color"][7];
+        xtra_color.white = (uint8_t) json["color"][8];  
+        xtra_color.red = (uint8_t) json["color"][9];
+        xtra_color.green = (uint8_t) json["color"][10];
+        xtra_color.blue = (uint8_t) json["color"][11];
         convertColors();
-
         strip.setMode(ws2812fx_mode);
         strip.setSpeed(convertSpeed(ws2812fx_speed));
         strip.setBrightness(brightness);
@@ -1651,9 +1563,11 @@ bool readStateFS() {
         #endif
         
         updateFS = false;
+        jsonBuffer.clear();
         return true;
       } else {
         DBG_OUTPUT_PORT.println("Failed to parse JSON!");
+        jsonBuffer.clear();
       }
     } else {
       DBG_OUTPUT_PORT.println("Failed to open \"/stripstate.json\"");
@@ -1665,4 +1579,295 @@ bool readStateFS() {
   updateFS = false;
   return false;
 }
+#endif
+
+#ifdef ENABLE_REMOTE
+void handleRemote() {
+    if (irrecv.decode(&results)) {
+      DBG_OUTPUT_PORT.print("IR Code: 0x");
+      DBG_OUTPUT_PORT.print(uint64ToString(results.value, HEX));
+      DBG_OUTPUT_PORT.println("");
+      if (results.value == rmt_commands[REPEATCMD]) { //Repeat
+        results.value = last_remote_cmd;
+        chng = 5;
+      } else {
+        chng = 1;       
+      }
+      if (results.value == rmt_commands[ON_OFF]) {   // ON/OFF TOGGLE
+        last_remote_cmd = 0;
+        if (mode == OFF) {
+          setModeByStateString(last_state);
+        } else {
+          mode = OFF;
+        }
+      }
+      if ((mode != AUTO) && (mode != OFF)) {
+        if (results.value == rmt_commands[BRIGHTNESS_UP]) { //Brightness Up
+          last_remote_cmd = results.value;
+          if (brightness + chng <= 255) {
+            brightness = brightness + chng;
+            mode = SET_BRIGHTNESS;
+          }
+        }
+        if (results.value == rmt_commands[BRIGHTNESS_DOWN]) { //Brightness down
+          last_remote_cmd = results.value;
+          if (brightness - chng >= 0) {
+            brightness = brightness - chng;
+            mode = SET_BRIGHTNESS;
+          }
+        }
+      }
+      if ((mode !=AUTO) && (mode != E131) && (mode != OFF)) {
+        if (results.value == rmt_commands[SPEED_UP]) { //Speed Up
+          last_remote_cmd = results.value;
+          if (ws2812fx_speed + chng <= 255) {
+            ws2812fx_speed = ws2812fx_speed + chng;
+            mode = SET_SPEED;
+          }
+        }
+        if (results.value == rmt_commands[SPEED_DOWN]) { //Speed down
+          last_remote_cmd = results.value;
+          if (ws2812fx_speed - chng >= 0) {
+            ws2812fx_speed = ws2812fx_speed - chng;
+            mode = SET_SPEED;
+          }
+        }
+      }
+      if (mode == HOLD) {
+        if (results.value == rmt_commands[RED_UP]) { //Red Up
+          last_remote_cmd = results.value;
+          if (selected_color == 1) {
+            if (main_color.red + chng <= 255) {
+              main_color.red = main_color.red + chng;
+              mode = SET_COLOR;
+            }
+          }
+          if (selected_color == 2) {
+            if (back_color.red + chng <= 255) {
+              back_color.red = back_color.red + chng;
+              mode = SET_COLOR;
+            }
+          }
+          if (selected_color == 3) {
+            if (xtra_color.red + chng <= 255) {
+              xtra_color.red = xtra_color.red + chng;
+              mode = SET_COLOR;
+            }
+          }
+        }
+        if (results.value == rmt_commands[RED_DOWN]) { //Red down
+          last_remote_cmd = results.value;
+          if (selected_color == 1) {
+            if (main_color.red - chng >= 0) {
+              main_color.red = main_color.red - chng;
+              mode = SET_COLOR; 
+            }
+          }
+          if (selected_color == 2) {
+            if (back_color.red - chng >= 0) {
+              back_color.red = back_color.red - chng;
+              mode = SET_COLOR;
+            }
+          }
+          if (selected_color == 3) {
+            if (xtra_color.red - chng >= 0) {
+              xtra_color.red = xtra_color.red - chng;
+              mode = SET_COLOR;
+            }
+          }
+        }
+        if (results.value == rmt_commands[GREEN_UP]) { //Green Up
+          last_remote_cmd = results.value;
+          if (selected_color == 1) {
+            if (main_color.green + chng <= 255) {
+              main_color.green = main_color.green + chng;
+              mode = SET_COLOR;
+            }
+          }
+          if (selected_color == 2) {
+            if (back_color.green + chng <= 255) {
+              back_color.green = back_color.green + chng;
+              mode = SET_COLOR;
+            }
+          }
+          if (selected_color == 3) {
+            if (xtra_color.green + chng <= 255) {
+              xtra_color.green = xtra_color.green + chng;
+              mode = SET_COLOR;
+            }
+          }
+        }
+        if (results.value == rmt_commands[GREEN_DOWN]) { //green down
+          last_remote_cmd = results.value;
+          if (selected_color == 1) {
+            if (main_color.green - chng >= 0) {
+              main_color.green = main_color.green - chng;;
+              mode = SET_COLOR; 
+            }
+          }
+          if (selected_color == 2) {
+            if (back_color.green - chng >= 0) {
+              back_color.green = back_color.green - chng;
+              mode = SET_COLOR;
+            }
+          }
+          if (selected_color == 3) {
+            if (xtra_color.green - chng >= 0) {
+              xtra_color.green = xtra_color.green - chng;
+              mode = SET_COLOR;
+            }
+          }
+        }
+        if (results.value == rmt_commands[BLUE_UP]) { //Blue Up
+          last_remote_cmd = results.value;
+          if (selected_color == 1) {
+            if (main_color.blue + chng <= 255) {
+              main_color.blue = main_color.blue + chng;
+              mode = SET_COLOR;
+            }
+          }
+          if (selected_color == 2) {
+            if (back_color.blue + chng <= 255) {
+              back_color.blue = back_color.blue + chng;
+              mode = SET_COLOR;
+            }
+          }
+          if (selected_color == 3) {
+            if (xtra_color.blue + chng <= 255) {
+              xtra_color.blue = xtra_color.blue + chng;
+              mode = SET_COLOR;
+            }
+          }
+        }
+        if (results.value == rmt_commands[BLUE_DOWN]) { //BLUE down
+          last_remote_cmd = results.value;
+          if (selected_color == 1) {
+            if (main_color.blue - chng >= 0) {
+              main_color.blue = main_color.blue - chng;
+              mode = SET_COLOR; 
+            }
+          }
+          if (selected_color == 2) {
+            if (back_color.blue - chng >= 0) {
+              back_color.blue = back_color.blue - chng;
+              mode = SET_COLOR;
+            }
+          }
+          if (selected_color == 3) {
+            if (xtra_color.blue - chng >= 0) {
+              xtra_color.blue = xtra_color.blue - chng;
+              mode = SET_COLOR;
+            }
+          }
+        }
+        if (results.value == rmt_commands[WHITE_UP]) { //White Up
+          last_remote_cmd = results.value;
+          if (selected_color == 1) {
+            if (main_color.white + chng <= 255) {
+              main_color.white = main_color.white + chng;
+              mode = SET_COLOR;
+            }
+          }
+          if (selected_color == 2) {
+            if (back_color.white + chng <= 255) {
+              back_color.white = back_color.white + chng;
+              mode = SET_COLOR;
+            }
+          }
+          if (selected_color == 3) {
+            if (xtra_color.white + chng <= 255) {
+              xtra_color.white = xtra_color.white + chng;
+              mode = SET_COLOR;
+            }
+          }
+        }
+        if (results.value == rmt_commands[WHITE_DOWN]) { //White down
+          last_remote_cmd = results.value;
+          if (selected_color == 1) {
+            if (main_color.white - chng >= 0) {
+              main_color.white = main_color.white - chng;
+              mode = SET_COLOR; 
+            }
+          }
+          if (selected_color == 2) {
+            if (back_color.white - chng >= 0) {
+              back_color.white = back_color.white - chng;
+              mode = SET_COLOR;
+            }
+          }
+          if (selected_color == 3) {
+            if (xtra_color.white - chng >= 0) {
+              xtra_color.white = xtra_color.white - chng;
+              mode = SET_COLOR;
+            }
+          }
+        }
+        if (results.value == rmt_commands[COL_M]) { // Select Main Color
+          last_remote_cmd = 0;
+          selected_color = 1;
+        } 
+        if (results.value == rmt_commands[COL_B]) { // Select Back Color
+          last_remote_cmd = 0;
+          selected_color = 2;
+        } 
+        if (results.value == rmt_commands[COL_X]) { // Select Extra Color
+          last_remote_cmd = 0;
+          selected_color = 3;
+        }
+      } // end of if HOLD
+      if (results.value == rmt_commands[MODE_UP]) { //Mode Up
+        last_remote_cmd = results.value;
+        if ((ws2812fx_mode < strip.getModeCount()-1) && (mode == HOLD)) {
+          ws2812fx_mode = ws2812fx_mode + 1;
+        }
+        mode = SET_MODE;
+      }
+      if (results.value == rmt_commands[MODE_DOWN]) { //Mode down
+        last_remote_cmd = results.value;
+        if ((ws2812fx_mode > 0) && (mode == HOLD)) {
+          ws2812fx_mode = ws2812fx_mode - 1;
+        }
+        mode = SET_MODE;
+      }
+      if (results.value == rmt_commands[AUTOMODE]) { // Toggle Automode
+        last_remote_cmd = 0;
+        if (mode != AUTO) {
+            handleAutoStart();
+        } else {
+            handleAutoStop();
+        }
+      }
+    #ifdef ENABLE_TV
+      if (results.value == rmt_commands[CUST_1]) { // Select TV Mode
+        last_remote_cmd = 0;
+        if (mode == TV) {
+          setModeByStateString(last_state);
+        } else {
+          mode = TV;
+        }  
+      }
+    #endif 
+      if (results.value == rmt_commands[CUST_2]) { // Select Custom Mode 2
+        last_remote_cmd = 0;
+        ws2812fx_mode = 12;
+        mode = SET_MODE;
+      } 
+      if (results.value == rmt_commands[CUST_3]) { // Select Custom Mode 3
+        last_remote_cmd = 0;
+        ws2812fx_mode = 48;
+        mode = SET_MODE;
+      } 
+      if (results.value == rmt_commands[CUST_4]) { // Select Custom Mode 4
+        last_remote_cmd = 0;
+        ws2812fx_mode = 21;
+        mode = SET_MODE; 
+      }
+      if (results.value == rmt_commands[CUST_5]) { // Select Custom Mode 5
+        last_remote_cmd = 0;
+        ws2812fx_mode = 46;
+        mode = SET_MODE;
+      } 
+      irrecv.resume();  // Receive the next value
+    }
+  }
 #endif

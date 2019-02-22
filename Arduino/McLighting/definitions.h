@@ -5,7 +5,7 @@
 // Neopixel
 #define PIN 3              // PIN (15 / D8) where neopixel / WS2811 strip is attached 
 #define NUMLEDS 144        // Number of leds in the strip 
-#define BUILTIN_LED 2      // ESP-12F has the built in LED on GPIO2, see https://github.com/esp8266/Arduino/issues/2192
+#define LED_BUILTIN 2      // ESP-12F has the built in LED on GPIO2, see https://github.com/esp8266/Arduino/issues/2192
 #define RGBW               // If defined, use RGBW Strips
 
 const char HOSTNAME[] = "McLightingRGBW_01";   // Friedly hostname
@@ -129,7 +129,7 @@ uint32_t autoParams[][6] = {   // main_color, back_color, xtra_color, speed, mod
 #define DBG_OUTPUT_PORT Serial  // Set debug output port
 
 // List of all color modes
-enum MODE {OFF, AUTO, TV, E131, SET_MODE, HOLD, CUSTOM, SETCOLOR, SETSPEED, BRIGHTNESS};
+enum MODE {OFF, AUTO, TV, E131, CUSTOM, HOLD, SET_ALL, SET_MODE, SET_COLOR, SET_SPEED, SET_BRIGHTNESS};
 MODE mode = SET_MODE;        // Standard mode that is active when software starts
 MODE prevmode = mode;
 
@@ -159,9 +159,8 @@ LEDState xtra_color = {   0, 0, 0, 0 };  // Store the "3rd color" of the strip u
 #define ENABLE_STATE_SAVE_SPIFFS        // If defined, saves state on SPIFFS
 //#define ENABLE_STATE_SAVE_EEPROM        // If defined, save state on reboot
 
-char beforeoffauto_state[66];            // Keeps the state representation before auto mode
+char last_state[66];            // Keeps the state representation before auto or off mode 
 bool updateState = false;
-
 
 // Button handling
 #if defined(ENABLE_BUTTON) || defined(ENABLE_BUTTON_GY33)
