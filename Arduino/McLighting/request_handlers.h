@@ -53,6 +53,7 @@ void convertColors() {
   hex_colors[1] = (uint32_t)(back_color.white << 24) | (back_color.red << 16) | (back_color.green << 8) | back_color.blue;
   hex_colors[2] = (uint32_t)(xtra_color.white << 24) | (xtra_color.red << 16) | (xtra_color.green << 8) | xtra_color.blue;
 }
+
 void getArgs() {
   if (server.arg("rgb") != "") {
     uint32_t rgb = (uint32_t) strtoul(server.arg("rgb").c_str(), NULL, 16);
@@ -75,31 +76,31 @@ void getArgs() {
     }
   }
   if (server.arg("rgb2") != "") {
-    uint32_t rgb = (uint32_t) strtoul(server.arg("rgb2").c_str(), NULL, 16);
-    back_color.white = ((rgb >> 24) & 0xFF);
-    back_color.red = ((rgb >> 16) & 0xFF);
-    back_color.green = ((rgb >> 8) & 0xFF);
-    back_color.blue = ((rgb >> 0) & 0xFF);
+    uint32_t rgb2 = (uint32_t) strtoul(server.arg("rgb2").c_str(), NULL, 16);
+    back_color.white = ((rgb2 >> 24) & 0xFF);
+    back_color.red = ((rgb2 >> 16) & 0xFF);
+    back_color.green = ((rgb2 >> 8) & 0xFF);
+    back_color.blue = ((rgb2 >> 0) & 0xFF);
   } else {
     if ((server.arg("r2") != "") && (server.arg("r2").toInt() >= 0) && (server.arg("r2").toInt() <= 255)) { 
       back_color.red = server.arg("r2").toInt();
     }
-    if ((server.arg("g2") != "") && (server.arg("g").toInt() >= 0) && (server.arg("g2").toInt() <= 255)) {
+    if ((server.arg("g2") != "") && (server.arg("g2").toInt() >= 0) && (server.arg("g2").toInt() <= 255)) {
       back_color.green = server.arg("g2").toInt();
     }
-    if ((server.arg("b2") != "") && (server.arg("b").toInt() >= 0) && (server.arg("b2").toInt() <= 255)) {
+    if ((server.arg("b2") != "") && (server.arg("b2").toInt() >= 0) && (server.arg("b2").toInt() <= 255)) {
       back_color.blue = server.arg("b2").toInt();
     }
-    if ((server.arg("w2") != "") && (server.arg("w").toInt() >= 0) && (server.arg("w2").toInt() <= 255)){
+    if ((server.arg("w2") != "") && (server.arg("w2").toInt() >= 0) && (server.arg("w2").toInt() <= 255)){
       back_color.white = server.arg("w2").toInt();
     }
   }
   if (server.arg("rgb3") != "") {
-    uint32_t rgb = (uint32_t) strtoul(server.arg("rgb3").c_str(), NULL, 16);
-    xtra_color.white = ((rgb >> 24) & 0xFF);
-    xtra_color.red = ((rgb >> 16) & 0xFF);
-    xtra_color.green = ((rgb >> 8) & 0xFF);
-    xtra_color.blue = ((rgb >> 0) & 0xFF);
+    uint32_t rgb3 = (uint32_t) strtoul(server.arg("rgb3").c_str(), NULL, 16);
+    xtra_color.white = ((rgb3 >> 24) & 0xFF);
+    xtra_color.red = ((rgb3 >> 16) & 0xFF);
+    xtra_color.green = ((rgb3 >> 8) & 0xFF);
+    xtra_color.blue = ((rgb3 >> 0) & 0xFF);
   } else {
     if ((server.arg("r3") != "") && (server.arg("r3").toInt() >= 0) && (server.arg("r3").toInt() <= 255)) { 
       xtra_color.red = server.arg("r3").toInt();
@@ -111,7 +112,7 @@ void getArgs() {
       xtra_color.blue = server.arg("b3").toInt();
     }
     if ((server.arg("w3") != "") && (server.arg("w3").toInt() >= 0) && (server.arg("w3").toInt() <= 255)){
-      xtra_color.white = server.arg("w").toInt();
+      xtra_color.white = server.arg("w3").toInt();
     }
   }
   if ((server.arg("s") != "") && (server.arg("s").toInt() >= 0) && (server.arg("s").toInt() <= 255)) {
@@ -135,11 +136,11 @@ void getArgs() {
   back_color.red = constrain(back_color.red, 0, 255);
   back_color.green = constrain(back_color.green, 0, 255);
   back_color.blue = constrain(back_color.blue, 0, 255);
-  back_color.white = constrain(back_color.blue, 0, 255);
+  back_color.white = constrain(back_color.white, 0, 255);
   xtra_color.red = constrain(xtra_color.red, 0, 255);
   xtra_color.green = constrain(xtra_color.green, 0, 255);
   xtra_color.blue = constrain(xtra_color.blue, 0, 255);
-  xtra_color.white = constrain(xtra_color.blue, 0, 255);
+  xtra_color.white = constrain(xtra_color.white, 0, 255);
   convertColors();
   DBG_OUTPUT_PORT.print("Get Args: ");
   DBG_OUTPUT_PORT.println(listStatusJSON());
@@ -414,9 +415,9 @@ void handleSetWS2812FXMode(uint8_t * mypayload) {
 }
 
 String listStatusJSON(void) {
-  uint8_t tmp_mode = (mode == SET_MODE) ? (uint8_t) ws2812fx_mode : strip.getMode();
-  
-  DynamicJsonDocument jsonBuffer(JSON_OBJECT_SIZE(6) + JSON_ARRAY_SIZE(12)  + 150);
+  uint8_t tmp_mode = (mode == SET_MODE) ? (uint8_t) ws2812fx_mode : strip.getMode(); 
+  const size_t bufferSize = JSON_ARRAY_SIZE(12) + JSON_OBJECT_SIZE(6) + 150;
+  DynamicJsonDocument jsonBuffer(bufferSize);
   JsonObject root = jsonBuffer.to<JsonObject>();
   root["mode"] = (uint8_t) mode;
   root["ws2812fx_mode"] = tmp_mode;
@@ -449,7 +450,8 @@ void getStatusJSON() {
 }
 
 String listModesJSON(void) {
-  DynamicJsonDocument jsonBuffer(JSON_ARRAY_SIZE(strip.getModeCount() + 3) + strip.getModeCount()*JSON_OBJECT_SIZE(2) + 150);
+  const size_t bufferSize = JSON_ARRAY_SIZE(strip.getModeCount() + 3) + (strip.getModeCount() + 3)*JSON_OBJECT_SIZE(2) + 2000;
+  DynamicJsonDocument jsonBuffer(bufferSize);
   JsonArray json = jsonBuffer.to<JsonArray>();
   JsonObject objectoff = json.createNestedObject();
   objectoff["mode"] = "off";
@@ -473,6 +475,7 @@ String listModesJSON(void) {
   
   String json_str;
   serializeJson(json, json_str);
+  serializeJson(json, DBG_OUTPUT_PORT);
   jsonBuffer.clear();
   return json_str;
 }
@@ -545,7 +548,7 @@ void autoTick() {
 void handleAutoStart() {
   if (mode!=AUTO) {
     DBG_OUTPUT_PORT.println("Starting AUTO mode."); 
-    sprintf(last_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
+    sprintf(last_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, ws2812fx_mode, ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
     mode = AUTO;
     autoCount = 0;
     autoTick();
@@ -878,7 +881,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
     }
 
     void sendState() {
-      DynamicJsonDocument jsonBuffer(JSON_OBJECT_SIZE(6) + JSON_OBJECT_SIZE(12) + 150);
+      const size_t bufferSize = JSON_OBJECT_SIZE(6) + JSON_OBJECT_SIZE(12) + 1000;
+      DynamicJsonDocument jsonBuffer(bufferSize);
       JsonObject root = jsonBuffer.to<JsonObject>();
 
       root["state"] = (stateOn) ? on_cmd : off_cmd;
@@ -936,7 +940,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
     }
 
     bool processJson(char* message) {
-      DynamicJsonDocument jsonBuffer(JSON_OBJECT_SIZE(5) + JSON_OBJECT_SIZE(12) + 150);
+      const size_t bufferSize = JSON_OBJECT_SIZE(5) + JSON_OBJECT_SIZE(12) + 500;
+      DynamicJsonDocument jsonBuffer(bufferSize);
       DeserializationError error = deserializeJson(jsonBuffer, message);
       if (error) {
         DBG_OUTPUT_PORT.print("parseObject() failed: ");
@@ -1090,7 +1095,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
           ha_send_data.detach();
           mqtt_client.subscribe(mqtt_ha_state_in.c_str(), qossub);
           #ifdef MQTT_HOME_ASSISTANT_SUPPORT
-            DynamicJsonDocument jsonBuffer(JSON_ARRAY_SIZE(strip.getModeCount()) + JSON_OBJECT_SIZE(12) + 150);
+            const size_t bufferSize = JSON_ARRAY_SIZE(strip.getModeCount()+ 3) + JSON_OBJECT_SIZE(11) + 1500;
+            DynamicJsonDocument jsonBuffer(bufferSize);
             JsonObject json = jsonBuffer.to<JsonObject>();
             json["name"] = HOSTNAME;
             #ifdef MQTT_HOME_ASSISTANT_0_84_SUPPORT
@@ -1107,18 +1113,16 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
             json["color_temp"] = "true";
             json["effect"] = "true";
             JsonArray effect_list = json.createNestedArray("effect_list");
+            effect_list.add("OFF");
+            #ifdef ENABLE_TV
+              effect_list.add("TV");
+            #endif
+            #ifdef ENABLE_E131
+               effect_list.add("E131");
+            #endif
             for (uint8_t i = 0; i < strip.getModeCount(); i++) {
               effect_list.add(strip.getModeName(i));
             }
-            #ifdef MQTT_HOME_ASSISTANT_SUPPORT
-              effect_list.add("OFF");
-              #ifdef ENABLE_TV
-                effect_list.add("TV");
-              #endif
-              #ifdef ENABLE_E131
-                 effect_list.add("E131");
-              #endif
-            #endif
             char buffer[measureJson(json) + 1];
             serializeJson(json, buffer, sizeof(buffer));
             jsonBuffer.clear();
@@ -1184,7 +1188,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         uint16_t packetIdSub2 = amqttClient.subscribe((char *)mqtt_ha_state_in.c_str(), qossub);
         DBG_OUTPUT_PORT.printf("Subscribing at QoS %d, packetId: ", qossub); DBG_OUTPUT_PORT.println(packetIdSub2);
         #ifdef MQTT_HOME_ASSISTANT_SUPPORT
-          DynamicJsonDocument jsonBuffer(JSON_ARRAY_SIZE(strip.getModeCount()) + JSON_OBJECT_SIZE(12) + 150);
+          const size_t bufferSize = JSON_ARRAY_SIZE(strip.getModeCount()+ 3) + JSON_OBJECT_SIZE(11) + 1500;
+          DynamicJsonDocument jsonBuffer(bufferSize);
           JsonObject json = jsonBuffer.to<JsonObject>();
           json["name"] = HOSTNAME;
           #ifdef MQTT_HOME_ASSISTANT_0_84_SUPPORT
@@ -1201,18 +1206,16 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
           json["color_temp"] = "true";
           json["effect"] = "true";
           JsonArray effect_list = json.createNestedArray("effect_list");
+          effect_list.add("OFF");
+          #ifdef ENABLE_TV
+            effect_list.add("TV");
+          #endif
+          #ifdef ENABLE_E131
+             effect_list.add("E131");
+          #endif
           for (uint8_t i = 0; i < strip.getModeCount(); i++) {
             effect_list.add(strip.getModeName(i));
           }
-          #ifdef MQTT_HOME_ASSISTANT_SUPPORT
-              effect_list.add("OFF");
-              #ifdef ENABLE_TV
-                effect_list.add("TV");
-              #endif
-              #ifdef ENABLE_E131
-                 effect_list.add("E131");
-              #endif
-          #endif
           char buffer[measureJson(json) + 1];
           serializeJson(json, buffer, sizeof(buffer));
           jsonBuffer.clear();
@@ -1424,7 +1427,8 @@ bool writeConfigFS(bool saveConfig){
     //FS save
     updateFS = true;
     DBG_OUTPUT_PORT.print("Saving config: ");
-    DynamicJsonDocument jsonBuffer;
+    const size_t bufferSize = JSON_OBJECT_SIZE(4) + 150;
+    DynamicJsonDocument jsonBuffer(bufferSize);
     JsonObject json = jsonBuffer.to<JsonObject>();
     json["mqtt_host"] = mqtt_host;
     json["mqtt_port"] = mqtt_port;
@@ -1461,7 +1465,8 @@ bool readConfigFS() {
       size_t size = configFile.size();
       std::unique_ptr<char[]> buf(new char[size]);
       configFile.readBytes(buf.get(), size);
-      DynamicJsonDocument jsonBuffer(JSON_OBJECT_SIZE(4) + 150);
+      const size_t bufferSize = JSON_OBJECT_SIZE(4) + 150;
+      DynamicJsonDocument jsonBuffer(bufferSize);
       DeserializationError error = deserializeJson(jsonBuffer, buf.get());
       DBG_OUTPUT_PORT.print("Config: ");
       if (!error) {
@@ -1529,7 +1534,8 @@ bool readStateFS() {
       // Allocate a buffer to store contents of the file.
       std::unique_ptr<char[]> buf(new char[size]);
       configFile.readBytes(buf.get(), size);
-      DynamicJsonDocument jsonBuffer(JSON_OBJECT_SIZE(5) + JSON_ARRAY_SIZE(12) + 150);
+      const size_t bufferSize = JSON_OBJECT_SIZE(5) + JSON_ARRAY_SIZE(12) + 500;
+      DynamicJsonDocument jsonBuffer(bufferSize);
       DeserializationError error = deserializeJson(jsonBuffer, buf.get());
       if (!error) {
         JsonObject json = jsonBuffer.as<JsonObject>();

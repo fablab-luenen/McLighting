@@ -557,7 +557,8 @@ DBG_OUTPUT_PORT.println("Starting....");
   }, handleFileUpload);
   //get heap status, analog input value and all GPIO statuses in one json call
   server.on("/esp_status", HTTP_GET, []() {
-    DynamicJsonDocument jsonBuffer;
+    const size_t bufferSize = JSON_OBJECT_SIZE(31) + 600;
+    DynamicJsonDocument jsonBuffer(bufferSize);
     JsonObject json = jsonBuffer.to<JsonObject>();
     json["HOSTNAME"] = HOSTNAME;
     json["version"] = SKETCH_VERSION;
@@ -1017,10 +1018,10 @@ DBG_OUTPUT_PORT.println("Starting....");
 //    delay(2000);
 //    tcs.setConfig(MCU_LED_OFF, MCU_WHITE_OFF);
   #endif
-
+  prevmode = mode;
   #ifdef ENABLE_REMOTE
     irrecv.enableIRIn();  // Start the receiver
-    sprintf(last_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", prevmode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
+    sprintf(last_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, ws2812fx_mode, ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
   #endif
 }
 
@@ -1139,10 +1140,10 @@ void loop() {
     if (mode == HOLD) strip.trigger();
   }
  
-  if (prevmode != mode) {
-    if (mode != AUTO) {  // do not save if AUTO Mode is set
+  if (prevmode != mode) {  
+    if ((mode != AUTO) && (prevmode != AUTO)) {  // do not save if AUTO Mode is/was set
       if(!settings_save_state.active()) settings_save_state.once(5, tickerSaveState);
-      sprintf(last_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", prevmode, strip.getMode(), ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
+      sprintf(last_state, "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", prevmode, ws2812fx_mode, ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue, xtra_color.white);
     }
   }
   if (updateState){
