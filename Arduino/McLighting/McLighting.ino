@@ -65,7 +65,7 @@
 // ***************************************************************************
   #include <ESPAsyncUDP.h>         //https://github.com/me-no-dev/ESPAsyncUDP
   #include <ESPAsyncE131.h>        //https://github.com/forkineye/ESPAsyncE131
-  ESPAsyncE131 e131(END_UNIVERSE - START_UNIVERSE + 1);
+  ESPAsyncE131* e131 = NULL; //(END_UNIVERSE - START_UNIVERSE + 1);
 #endif
 
 #if defined(ENABLE_REMOTE)
@@ -111,14 +111,33 @@ WS2812FX* strip = NULL;
 
 #if defined(USE_WS2812FX_DMA)
   #include <NeoPixelBus.h>
-  #if defined(USE_WS2812FX_DMA) 
-      NeoEsp8266Dma800KbpsMethod* dma = NULL;  //800 KHz bitstream (most NeoPixel products w/WS2812 LEDs) for now
+
+  #if USE_WS2812FX_DMA == 0 // Uses GPIO3/RXD0/RX, more info: https://github.com/Makuna/NeoPixelBus/wiki/ESP8266-NeoMethods
+    #if !defined(LED_TYPE_WS2811) 
+      NeoEsp8266Dma800KbpsMethod* dma = NULL ; //800 KHz bitstream (most NeoPixel products w/WS2812 LEDs)
+    #else
+      NeoEsp8266Dma400KbpsMethod* dma = NULL;  //400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
+    #endif
+  #endif
+  #if USE_WS2812FX_DMA == 1 // Uses UART1: GPIO1/TXD0/TX, more info: https://github.com/Makuna/NeoPixelBus/wiki/ESP8266-NeoMethods
+    #if !defined(LED_TYPE_WS2811) 
+      NeoEsp8266Uart0800KbpsMethod* dma = NULL; //800 KHz bitstream (most NeoPixel products w/WS2812 LEDs)
+    #else
+      NeoEsp8266Uart0400KbpsMethod* dma = NULL; //400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
+    #endif
+  #endif
+  #if USE_WS2812FX_DMA == 2 // Uses UART2: GPIO2/TXD1/D4, more info: https://github.com/Makuna/NeoPixelBus/wiki/ESP8266-NeoMethods
+    #if !defined(LED_TYPE_WS2811) 
+      NeoEsp8266Uart1800KbpsMethod* dma = NULL; //800 KHz bitstream (most NeoPixel products w/WS2812 LEDs)
+    #else
+      NeoEsp8266Uart1400KbpsMethod* dma = NULL; //400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
+    #endif
   #endif
   
   void initDMA(uint16_t stripSize = NUMLEDS){
-    //if (dma) delete dma;
+    if (dma) delete dma;
     uint8_t ledcolors = 3;
-    if (strstr(rgbOrder, "W") != NULL) {
+    if (strstr(WS2812FXStripSettings.RGBOrder, "W") != NULL) {
       ledcolors = 4;
     }
   #if USE_WS2812FX_DMA == 0 // Uses GPIO3/RXD0/RX, more info: https://github.com/Makuna/NeoPixelBus/wiki/ESP8266-NeoMethods
@@ -250,19 +269,20 @@ void saveConfigCallback () {
 
 
 // function to Initialize the strip
-void initStrip(uint16_t stripSize = WS2812FXStripSettings.stripSize, neoPixelType RGBOrder = WS2812FXStripSettings.RGBOrder, uint8_t pin = WS2812FXStripSettings.pin, uint8_t fxoptions = WS2812FXStripSettings.fxoptions ){
+void initStrip(uint16_t stripSize = WS2812FXStripSettings.stripSize, char RGBOrder[5] = WS2812FXStripSettings.RGBOrder, uint8_t pin = WS2812FXStripSettings.pin, uint8_t fxoptions = WS2812FXStripSettings.fxoptions ){
   if (strip != NULL) {
-    DBG_OUTPUT_PORT.println("Deleting Strip!");
-    //delete(strip);
+    DBG_OUTPUT_PORT.println("Deleting strip!");
+    delete(strip);
     WS2812FXStripSettings.stripSize = stripSize;
-    WS2812FXStripSettings.RGBOrder = RGBOrder;
+    strcpy(WS2812FXStripSettings.RGBOrder, RGBOrder);
     WS2812FXStripSettings.pin = pin;
     WS2812FXStripSettings.fxoptions = fxoptions;
   }
+  DBG_OUTPUT_PORT.println("Initializing strip!");
 #if !defined(LED_TYPE_WS2811)
-  strip = new WS2812FX(stripSize, pin, RGBOrder + NEO_KHZ800);
+  strip = new WS2812FX(stripSize, pin, checkRGBOrder(RGBOrder) + NEO_KHZ800);
 #else
-  strip = new WS2812FX(stripSize, pin, RGBOrder + NEO_KHZ400);
+  strip = new WS2812FX(stripSize, pin, checkRGBOrder(RGBOrder) + NEO_KHZ400);
 #endif
   // Parameter 1 = number of pixels in strip
   // Parameter 2 = Arduino pin number (most are valid)
@@ -366,7 +386,7 @@ void setup() {
   DBG_OUTPUT_PORT.begin(115200);
   delay(500);
   DBG_OUTPUT_PORT.println("");
-  DBG_OUTPUT_PORT.println("Starting...");
+  DBG_OUTPUT_PORT.println("Starting...Main Setup");
 #if ENABLE_STATE_SAVE == 0   
   EEPROM.begin(512);
 #endif
@@ -417,7 +437,6 @@ void setup() {
 
 #if defined(ENABLE_STATE_SAVE)
   //Strip Config
-  char tmp_strip_size[6], tmp_led_pin[3], tmp_fxoptions[5]; //needed tempararily for WiFiManager Settings
   #if ENABLE_STATE_SAVE == 1
     (readConfigFS()) ? DBG_OUTPUT_PORT.println("WiFiManager config FS read success!"): DBG_OUTPUT_PORT.println("WiFiManager config FS Read failure!");
     delay(500);
@@ -427,9 +446,7 @@ void setup() {
     (setConfByConfString(readEEPROM(0, 222)))? DBG_OUTPUT_PORT.println("WiFiManager config EEPROM read success!"): DBG_OUTPUT_PORT.println("WiFiManager config EEPROM Read failure!");
     (setModeByStateString(readEEPROM(256, 66)))? DBG_OUTPUT_PORT.println("Strip state config EEPROM read Success!") : DBG_OUTPUT_PORT.println("Strip state config EEPROM read failure!");
   #endif
-#endif
-
-#if defined(ENABLE_STATE_SAVE)
+  char tmp_strip_size[6], tmp_fxoptions[5], tmp_rgbOrder[5]; //needed tempararily for WiFiManager Settings
   WiFiManagerParameter custom_hostname("hostname", "Hostname", HOSTNAME, 64, " maxlength=64");
   #if defined(ENABLE_MQTT)
     char tmp_mqtt_port[6]; //needed tempararily for WiFiManager Settings
@@ -440,11 +457,15 @@ void setup() {
     WiFiManagerParameter custom_mqtt_pass("pass", "MQTT pass", mqtt_pass, 32, " maxlength=32 type=\"password\"");
   #endif
   snprintf(tmp_strip_size, sizeof(tmp_strip_size), "%d", WS2812FXStripSettings.stripSize);
-  snprintf(tmp_led_pin, sizeof(tmp_led_pin), "%d", WS2812FXStripSettings.pin);
-  snprintf(tmp_fxoptions, sizeof(tmp_fxoptions), "%d", WS2812FXStripSettings.fxoptions);
   WiFiManagerParameter custom_strip_size("strip_size", "Number of LEDs", tmp_strip_size, 4, " maxlength=4 type=\"number\"");
-  WiFiManagerParameter custom_led_pin("led_pin", "LED GPIO", tmp_led_pin, 2, " maxlength=2 type=\"number\"");
-  WiFiManagerParameter custom_rgbOrder("rgbOrder", "RGBOrder", rgbOrder, 4, " maxlength=4");
+  #if !defined(USE_WS2812FX_DMA)
+    char tmp_led_pin[3];
+    snprintf(tmp_led_pin, sizeof(tmp_led_pin), "%d", WS2812FXStripSettings.pin);
+    WiFiManagerParameter custom_led_pin("led_pin", "LED GPIO", tmp_led_pin, 2, " maxlength=2 type=\"number\"");
+  #endif
+  snprintf(tmp_rgbOrder, sizeof(tmp_rgbOrder), "%s", WS2812FXStripSettings.RGBOrder);
+  WiFiManagerParameter custom_rgbOrder("rgbOrder", "RGBOrder", tmp_rgbOrder, 4, " maxlength=4");
+  snprintf(tmp_fxoptions, sizeof(tmp_fxoptions), "%d", WS2812FXStripSettings.fxoptions);
   WiFiManagerParameter custom_fxoptions("fxoptions", "fxOptions", tmp_fxoptions, 3, " maxlength=3");
 #endif
 
@@ -469,7 +490,9 @@ void setup() {
     wifiManager.addParameter(&custom_mqtt_pass);
   #endif
   wifiManager.addParameter(&custom_strip_size);
-  wifiManager.addParameter(&custom_led_pin);
+  #if !defined(USE_WS2812FX_DMA)
+     wifiManager.addParameter(&custom_led_pin);
+  #endif
   wifiManager.addParameter(&custom_rgbOrder);
   wifiManager.addParameter(&custom_fxoptions);
     
@@ -510,12 +533,11 @@ void setup() {
     #endif
     strcpy(tmp_strip_size, custom_strip_size.getValue());
     WS2812FXStripSettings.stripSize = atoi(custom_strip_size.getValue());
-    uint8_t pin = atoi(custom_led_pin.getValue());   
-    if (((pin >= 0 && pin <= 5) || (pin >= 12 && pin <= 16)) && (pin != WS2812FXStripSettings.pin)) {
-      WS2812FXStripSettings.pin = pin;
-    }
-    strcpy(rgbOrder, custom_rgbOrder.getValue());
-    checkRGBOrder();
+    #if !defined(USE_WS2812FX_DMA)
+      checkPin(atoi(custom_led_pin.getValue()));
+    #endif
+    strcpy(tmp_rgbOrder, custom_rgbOrder.getValue());
+    checkRGBOrder(tmp_rgbOrder);
     WS2812FXStripSettings.fxoptions = atoi(custom_fxoptions.getValue());
     #if ENABLE_STATE_SAVE == 1
       (writeConfigFS(shouldSaveConfig)) ? DBG_OUTPUT_PORT.println("WiFiManager config FS Save success!"): DBG_OUTPUT_PORT.println("WiFiManager config FS Save failure!");
@@ -526,9 +548,9 @@ void setup() {
         char last_conf[223];
         DBG_OUTPUT_PORT.println("Saving WiFiManager config");
         #if defined(ENABLE_MQTT)
-          snprintf(last_conf, sizeof(last_conf), "CNF|%64s|%64s|%5d|%32s|%32s|%4d|%2d|%4s|%3d", HOSTNAME, mqtt_host, mqtt_port, mqtt_user, mqtt_pass, WS2812FXStripSettings.stripSize, WS2812FXStripSettings.pin, rgbOrder, WS2812FXStripSettings.fxoptions);
+          snprintf(last_conf, sizeof(last_conf), "CNF|%64s|%64s|%5d|%32s|%32s|%4d|%2d|%4s|%3d", HOSTNAME, mqtt_host, mqtt_port, mqtt_user, mqtt_pass, WS2812FXStripSettings.stripSize, WS2812FXStripSettings.pin, WS2812FXStripSettings.RGBOrder, WS2812FXStripSettings.fxoptions);
         #else
-          snprintf(last_conf, sizeof(last_conf), "CNF|%64s|%64s|%5d|%32s|%32s|%4d|%2d|%4s|%3d", HOSTNAME, "", "", "", "", WS2812FXStripSettings.stripSize, WS2812FXStripSettings.pin, rgbOrder, WS2812FXStripSettings.fxoptions);
+          snprintf(last_conf, sizeof(last_conf), "CNF|%64s|%64s|%5d|%32s|%32s|%4d|%2d|%4s|%3d", HOSTNAME, "", "", "", "", WS2812FXStripSettings.stripSize, WS2812FXStripSettings.pin, WS2812FXStripSettings.RGBOrder, WS2812FXStripSettings.fxoptions);
         #endif
         writeEEPROM(0, 222, last_conf);
         EEPROM.commit();
@@ -536,24 +558,8 @@ void setup() {
     #endif
   #endif
 
-/*  if(atoi(tmp_strip_size) != WS2812FXStripSettings.stripSize) {
-    WS2812FXStripSettings.stripSize = atoi(tmp_strip_size);
-  }
-  
-  pin = atoi(tmp_led_pin);
-    
-  if (((pin >= 0 && pin <= 5) || (pin >= 12 && pin <= 16)) && (pin != WS2812FXStripSettings.pin)) {
-    WS2812FXStripSettings.pin = pin;
-  }
-  
-  WS2812FXStripSettings.fxoptions = atoi(tmp_fxoptions);
-  
-  for( int i=0 ; i < sizeof(rgbOrder) ; ++i ) rgbOrder[i] = toupper(rgbOrder[i]) ;
-  */
-  checkRGBOrder();
   initStrip();
-
-  
+ 
   //if you get here you have connected to the WiFi
   DBG_OUTPUT_PORT.println("connected...yeey :)");
   ticker.detach();
@@ -642,451 +648,7 @@ void setup() {
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
 
-  // ***************************************************************************
-  // Setup: Webserver handler
-  // ***************************************************************************
-  //list directory
-  server.on("/list", HTTP_GET, handleFileList);
-  //create file
-  server.on("/edit", HTTP_PUT, handleFileCreate);
-  //delete file
-  server.on("/edit", HTTP_DELETE, handleFileDelete);
-  //first callback is called after the request has ended with all parsed arguments
-  //second callback handles file uploads at that location
-  server.on("/edit", HTTP_POST, []() {
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "text/plain", "");
-  }, handleFileUpload);
-
-// ***************************************************************************
-// Setup: SPIFFS Webserver handler
-// ***************************************************************************
-
-  server.on("/", HTTP_GET, [&](){
-#if defined(USE_HTML_MIN_GZ)
-    server.sendHeader("Content-Encoding", "gzip", true);
-    server.send_P(200, PSTR("text/html"), index_htm_gz, index_htm_gz_len);
-#else
-    if (!handleFileRead(server.uri()))
-      handleNotFound();
-#endif
-  });
-  
-  server.on("/edit", HTTP_GET, [&](){
-#if defined(USE_HTML_MIN_GZ)
-    server.sendHeader("Content-Encoding", "gzip", true);
-    server.send_P(200, PSTR("text/html"), edit_htm_gz, edit_htm_gz_len);
-#else
-    if (!handleFileRead("/edit.htm"))
-      handleNotFound();
-#endif
-  });
-
-
-  //called when the url is not defined here
-  //use it to load content from SPIFFS
-  server.onNotFound([]() {
-    if (!handleFileRead(server.uri()))
-      handleNotFound();
-  });
-
-  server.on("/upload", handleMinimalUpload);
-   
-  server.on("/esp_status", HTTP_GET, []() { //get heap status, analog input value and all GPIO statuses in one json call 
-    const size_t bufferSize = JSON_OBJECT_SIZE(31) + 1500;
-    DynamicJsonDocument jsonBuffer(bufferSize);
-    JsonObject json = jsonBuffer.to<JsonObject>();
-    json["HOSTNAME"] = HOSTNAME;
-    json["version"] = SKETCH_VERSION;
-    json["heap"] = ESP.getFreeHeap();
-    json["sketch_size"] = ESP.getSketchSize();
-    json["free_sketch_space"] = ESP.getFreeSketchSpace();
-    json["flash_chip_size"] = ESP.getFlashChipSize();
-    json["flash_chip_real_size"] = ESP.getFlashChipRealSize();
-    json["flash_chip_speed"] = ESP.getFlashChipSpeed();
-    json["sdk_version"] = ESP.getSdkVersion();
-    json["core_version"] = ESP.getCoreVersion();
-    json["cpu_freq"] = ESP.getCpuFreqMHz();
-    json["chip_id"] = ESP.getFlashChipId();
-    if (WS2812FXStripSettings.pin == 3) {
-        json["animation_lib"] = "WS2812FX_DMA";
-    } else if (WS2812FXStripSettings.pin == 2) {
-        json["animation_lib"] = "WS2812FX_UART1";
-    } else if (WS2812FXStripSettings.pin == 1) {
-        json["animation_lib"] = "WS2812FX_UART2";
-    } else {
-      json["animation_lib"] = "WS2812FX";
-    }
-    json["ws2812_pin"]  = WS2812FXStripSettings.pin;
-    json["led_count"] = WS2812FXStripSettings.stripSize;
-    json["rgb_order"] = rgbOrder;
-    if (strstr(rgbOrder, "w") != NULL) {
-      json["rgbw_mode"] = "ON";
-    } else {
-      json["rgbw_mode"] = "OFF";
-    }
-    #if defined(ENABLE_BUTTON)
-      json["button_mode"] = "ON";
-      json["button_pin"] = ENABLE_BUTTON;
-    #else
-      json["button_mode"] = "OFF";
-    #endif
-    #if defined(ENABLE_BUTTON_GY33)
-      json["button_gy33"] = "ON";
-      json["gy33_pin"] = ENABLE_BUTTON_GY33;
-    #else
-      json["button_gy33"] = "OFF";
-    #endif
-    #if defined(ENABLE_REMOTE)
-      json["ir_remote"] = "ON";
-      json["tsop_ir_pin"] = ENABLE_REMOTE;
-    #else
-      json["ir_remote"] = "OFF";
-    #endif
-    #if defined(ENABLE_MQTT)
-      #if ENABLE_MQTT == 0
-        json["mqtt"] = "MQTT";
-      #endif
-      #if ENABLE_MQTT == 1
-        json["mqtt"] = "AMQTT";
-      #endif
-    #else
-      json["mqtt"] = "OFF";
-    #endif
-    #if defined(ENABLE_HOMEASSISTANT)
-      json["home_assistant"] = "ON";
-    #else
-      json["home_assistant"] = "OFF";
-    #endif
-    #if defined(ENABLE_LEGACY_ANIMATIONS)
-      json["legacy_animations"] = "ON";
-    #else
-      json["legacy_animations"] = "OFF";
-    #endif
-    #if defined(ENABLE_TV)
-      json["tv_animation"] = "ON";
-    #else
-      json["tv_animation"] = "OFF";
-    #endif
-    #if defined(ENABLE_E131)
-      json["e131_animations"] = "ON";
-    #else
-      json["e131_animations"] = "OFF";
-    #endif
-    #if defined(ENABLE_OTA)
-      #if ENABLE_OTA == 0
-        json["ota"] = "ARDUINO";
-      #endif
-      #if ENABLE_OTA == 1
-        json["ota"] = "HTTP";
-      #endif
-    #else
-      json["ota"] = "OFF";
-    #endif
-    #if defined(ENABLE_STATE_SAVE)
-      #if ENABLE_STATE_SAVE == 1
-        json["state_save"] = "SPIFFS";
-      #endif
-      #if ENABLE_STATE_SAVE == 0
-        json["state_save"] = "EEPROM";
-      #endif
-    #else
-      json["state_save"] = "OFF";
-    #endif
-    
-    String json_str;
-    serializeJson(json, json_str);
-    jsonBuffer.clear();
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "application/json", json_str);
-  });
-  
-  server.on("/restart", []() {
-    DBG_OUTPUT_PORT.printf("/restart\r\n");
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "text/plain", "restarting..." );
-    ESP.restart();
-  });
-
-  server.on("/reset_wlan", []() {
-    DBG_OUTPUT_PORT.printf("/reset_wlan\r\n");
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "text/plain", "Resetting WLAN and restarting..." );
-    WiFiManager wifiManager;
-    wifiManager.resetSettings();
-    ESP.restart();
-  });
-
-  server.on("/start_config_ap", []() {
-    DBG_OUTPUT_PORT.printf("/start_config_ap\r\n");
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "text/plain", "Starting config AP ..." );
-    WiFiManager wifiManager;
-    wifiManager.startConfigPortal(HOSTNAME);
-  });
-
-  server.on("/format_spiffs", []() {
-    DBG_OUTPUT_PORT.printf("/format_spiffs\r\n");
-    server.send(200, "text/plain", "Formatting SPIFFS ..." );
-    SPIFFS.format();
-  });
-
-  server.on("/set_brightness", []() {
-    getArgs();
-    mode = SET_BRIGHTNESS;    
-    getStatusJSON();
-  });
-
-  server.on("/get_brightness", []() {
-    char str_brightness[4];
-    snprintf(str_brightness, sizeof(str_brightness), "%i", (int) (brightness / 2.55));
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "text/plain", str_brightness );
-    DBG_OUTPUT_PORT.printf("/get_brightness: %i\r\n", (int) (brightness / 2.55));
-  });
-
-  server.on("/set_speed", []() {
-    getArgs();
-    mode = SET_SPEED;
-    getStatusJSON();
-  });
-
-  server.on("/get_speed", []() {
-    char str_speed[4];
-    snprintf(str_speed, sizeof(str_speed), "%i", ws2812fx_speed);
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "text/plain", str_speed );
-    DBG_OUTPUT_PORT.printf("/get_speed: %i\r\n", ws2812fx_speed);
-  });
-
-  server.on("/get_switch", []() {
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "text/plain", (mode == OFF) ? "0" : "1" );
-    DBG_OUTPUT_PORT.printf("/get_switch: %s\r\n", (mode == OFF) ? "0" : "1");
-  });
-
-  server.on("/get_color", []() {
-    char rgbcolor[10];
-    snprintf(rgbcolor, sizeof(rgbcolor), "%02X%02X%02X%02X", main_color.white, main_color.red, main_color.green, main_color.blue);
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "text/plain", rgbcolor );
-    DBG_OUTPUT_PORT.print("/get_color: ");
-    DBG_OUTPUT_PORT.println(rgbcolor);
-  });
-  
-  server.on("/get_color2", []() {
-    char rgbcolor[10];
-    snprintf(rgbcolor, sizeof(rgbcolor), "%02X%02X%02X%02X", back_color.white, back_color.red, back_color.green, back_color.blue);
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "text/plain", rgbcolor );
-    DBG_OUTPUT_PORT.print("/get_color2: ");
-    DBG_OUTPUT_PORT.println(rgbcolor);
-  });
-
-  server.on("/get_color3", []() {
-    char rgbcolor[10];
-    snprintf(rgbcolor, sizeof(rgbcolor), "%02X%02X%02X%02X", xtra_color.white, xtra_color.red, xtra_color.green, xtra_color.blue);
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "text/plain", rgbcolor );
-    DBG_OUTPUT_PORT.print("/get_color3: ");
-    DBG_OUTPUT_PORT.println(rgbcolor);
-  });
-
-
-  server.on("/status", []() {
-    getStatusJSON();
-  });
-  
-  server.on("/config", []() {
-
-    /*
-
-    // This will be used later when web-interface is ready and HTTP_GET will not be allowed to update the Strip Settings
-
-    if(server.args() == 0 and server.method() != HTTP_POST)
-    {
-      server.sendHeader("Access-Control-Allow-Origin", "*");
-      server.send(200, "text/plain", "Only HTTP POST method is allowed and check the number of arguments!");
-      return;
-    }
-
-    */
-
-    bool updateFSE = false;
-    if(server.hasArg("ws_cnt")){
-      uint16_t pixelCt = server.arg("ws_cnt").toInt();
-      if (pixelCt > 0) {
-        WS2812FXStripSettings.stripSize = pixelCt;
-        updateFSE = true;
-      }
-    }
-    if(server.hasArg("ws_rgbo")){
-      snprintf(rgbOrder, sizeof(rgbOrder), "%s", server.arg("ws_rgbo").c_str());
-      updateFSE = checkRGBOrder();
-    }
-    
-#if !defined(USE_WS2812FX_DMA)    
-    if(server.hasArg("wspin")){
-      uint8_t pin = server.arg("wspin").toInt();
-      if (((pin >= 0) && (pin <= 5)) or ((pin >= 12) && (pin <= 16))) {
-        WS2812FXStripSettings.pin = pin;
-        updateFSE = true;
-        DBG_OUTPUT_PORT.println(pin);
-      } else {
-        DBG_OUTPUT_PORT.println("invalid input!");
-      }
-    }
-#endif
-    
-    if(server.hasArg("ws_fxopt")){
-      WS2812FXStripSettings.fxoptions = server.arg("ws_fxopt").toInt();
-      updateFSE = true;
-    }
-
-    if(updateFSE) {
-      mode = INIT_STRIP;
-    }
-    
-    if(server.hasArg("hostname")){
-      snprintf(HOSTNAME, sizeof(HOSTNAME), "%s", server.arg("hostname").c_str());
-      updateFSE = true;
-    }
-    
-#if defined(ENABLE_MQTT)   
-    if(server.hasArg("mqtt_host")){
-      snprintf(mqtt_host, sizeof(mqtt_host), "%s", server.arg("mqtt_host").c_str());
-      updateFSE = true;
-    }
-    if(server.hasArg("mqtt_port")){
-      if ((server.arg("mqtt_port").toInt() >= 0) && (server.arg("mqtt_port").toInt() <=65535)) {
-        mqtt_port = server.arg("mqttport").toInt();
-        updateFSE = true;
-      }    
-    }
-    if(server.hasArg("mqtt_user")){
-      snprintf(mqtt_user, sizeof(mqtt_user), "%s", server.arg("mqtt_user").c_str());
-      updateFSE = true;
-    }
-    if(server.hasArg("mqtt_pass")){
-      snprintf(mqtt_pass, sizeof(mqtt_pass), "%s", server.arg("mqtt_pass").c_str());
-      updateFSE = true;
-    } 
-#endif
-
-#if defined(ENABLE_STATE_SAVE)
-  #if ENABLE_STATE_SAVE == 1  
-    (writeConfigFS(updateFSE)) ? DBG_OUTPUT_PORT.println("Config FS Save success!"): DBG_OUTPUT_PORT.println("Config FS Save failure!");
-  #endif
-  #if ENABLE_STATE_SAVE == 0 
-    if (updateFSE) {
-      char last_conf[223];
-    #if defined(ENABLE_MQTT)
-      snprintf(last_conf, sizeof(last_conf), "CNF|%64s|%64s|%5d|%32s|%32s|%4d|%2d|%4s|%3d", HOSTNAME, mqtt_host, mqtt_port, mqtt_user, mqtt_pass, WS2812FXStripSettings.stripSize, WS2812FXStripSettings.pin, rgbOrder, WS2812FXStripSettings.fxoptions);
-    #else
-      snprintf(last_conf, sizeof(last_conf), "CNF|%64s|%64s|%5d|%32s|%32s|%4d|%2d|%4s|%3d", HOSTNAME, "", "", "", "", WS2812FXStripSettings.stripSize, WS2812FXStripSettings.pin, rgbOrder, WS2812FXStripSettings.fxoptions);
-    #endif
-      writeEEPROM(0, 222, last_conf);
-      EEPROM.commit();
-    }
-  #endif
-#endif
-    getConfigJSON();
-    delay(500);
-  
-#if defined(ENABLE_MQTT)
-    if (updateFSE) {
-      initMqtt();
-    }  
-#endif
-
-    updateFSE = false;
-  });
-  
-  
-  server.on("/off", []() {
-    mode = OFF;
-    getStatusJSON();
-  });
-
-    server.on("/auto", []() {
-    mode = AUTO;
-    getStatusJSON();
-  });
-
-  server.on("/all", []() {
-    getArgs();
-    ws2812fx_mode = FX_MODE_STATIC;
-    mode = SET_ALL;
-    getStatusJSON();
-  });
-
-  #if defined(ENABLE_LEGACY_ANIMATIONS)
-    server.on("/wipe", []() {
-      getArgs();
-      ws2812fx_mode = FX_MODE_COLOR_WIPE;
-      mode = SET_ALL;
-      getStatusJSON();
-    });
-  
-    server.on("/rainbow", []() {
-      getArgs();
-      ws2812fx_mode = FX_MODE_RAINBOW;
-      mode = SET_ALL;
-      getStatusJSON();
-    });
-  
-    server.on("/rainbowcycle", []() {
-      getArgs();
-      ws2812fx_mode = FX_MODE_RAINBOW_CYCLE;
-      mode = SET_ALL;
-      getStatusJSON();
-    });
-  
-    server.on("/theaterchase", []() {
-      getArgs();
-      ws2812fx_mode = FX_MODE_THEATER_CHASE;
-      mode = SET_ALL;
-      getStatusJSON();
-    });
-  
-    server.on("/twinklerandom", []() {
-      getArgs();
-      ws2812fx_mode = FX_MODE_TWINKLE_RANDOM;
-      mode = SET_ALL;
-      getStatusJSON();
-    });
-    
-    server.on("/theaterchaserainbow", []() {
-      getArgs();
-      ws2812fx_mode = FX_MODE_THEATER_CHASE_RAINBOW;
-      mode = SET_ALL;
-      getStatusJSON();
-    });
-  #endif
-  
-  #if defined(ENABLE_E131)
-    server.on("/e131", []() {
-      mode = E131;
-      getStatusJSON();
-    });
-  #endif
-  
-  #if defined(ENABLE_TV)
-    server.on("/tv", []() {
-      mode = TV;
-      getStatusJSON();
-    });
-  #endif
-
-  server.on("/get_modes", []() {
-    getModesJSON();
-  });
-
-  server.on("/set_mode", []() {
-    getArgs();
-    mode = SET_MODE;
-    getStatusJSON();
-  });
+#include "rest_api.h"
 
   server.begin();
 
@@ -1097,14 +659,15 @@ void setup() {
 
   #if defined(ENABLE_E131)
   // Choose one to begin listening for E1.31 data
+  e131 = new ESPAsyncE131(END_UNIVERSE - START_UNIVERSE + 1);
   // if (e131.begin(E131_UNICAST))                              // Listen via Unicast
-  if (e131.begin(E131_MULTICAST, START_UNIVERSE, END_UNIVERSE)) {// Listen via Multicast
+  if (e131->begin(E131_MULTICAST, START_UNIVERSE, END_UNIVERSE)) {// Listen via Multicast
       DBG_OUTPUT_PORT.println(F("Listening for data..."));
   } else {
       DBG_OUTPUT_PORT.println(F("*** e131.begin failed ***"));
   }
   #endif
-
+ DBG_OUTPUT_PORT.println("You are here!: 1117"); 
   prevmode = mode;
   
   #if defined(ENABLE_BUTTON_GY33)
@@ -1116,6 +679,7 @@ void setup() {
     irrecv.enableIRIn();  // Start the receiver
     snprintf(last_state, sizeof(last_state), "STA|%2d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d|%3d", mode, ws2812fx_mode, ws2812fx_speed, brightness, main_color.red, main_color.green, main_color.blue, main_color.white, back_color.red, back_color.green, back_color.blue, back_color.white, xtra_color.red, xtra_color.green, xtra_color.blue,xtra_color.white);
   #endif
+  DBG_OUTPUT_PORT.println("finished Main Setup!");
 }
 
 // ***************************************************************************
@@ -1330,134 +894,4 @@ void loop() {
   #if defined(ENABLE_REMOTE)
     handleRemote();
   #endif
-}
-
-boolean checkRGBOrder() {
-  for( int i=0 ; i < sizeof(rgbOrder) ; ++i ) rgbOrder[i] = toupper(rgbOrder[i]) ;
-  DBG_OUTPUT_PORT.print("Checking RGB Order: ");
-  if (strcmp(rgbOrder, "GRB") == 0)  {
-    WS2812FXStripSettings.RGBOrder = NEO_GRB;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "GBR") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_GBR;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "RGB") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_RGB;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
- } else if (strcmp(rgbOrder, "RBG") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_RBG;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
- } else if (strcmp(rgbOrder, "BRG") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_BRG;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
- } else if (strcmp(rgbOrder, "BGR") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_BGR;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "WGRB") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_WGRB;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "WGBR") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_WGBR;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "WRGB") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_WRGB;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "WRBG") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_WRBG;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "WBRG") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_WBRG;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "WBGR") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_WBGR;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "GWRB") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_GWRB;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "GWBR") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_GWBR;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "RWGB") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_RWGB;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "RWBG") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_RWBG;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "BWRG") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_BWRG;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "BWGR") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_BWGR;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "GRWB") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_GRWB;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "GBWR") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_GBWR;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "RGWB") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_RGWB;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "RBWG") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_RBWG;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "BRWG") == 0){
-    WS2812FXStripSettings.RGBOrder = NEO_BRWG;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "BGWR") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_BGWR;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "GRBW") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_GRBW;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "GBWR") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_GBRW;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "RGBW") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_RGBW;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "RBGW") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_RBGW;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "BRGW") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_BRGW;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else if (strcmp(rgbOrder, "BGRW") == 0) {
-    WS2812FXStripSettings.RGBOrder = NEO_BGRW;
-    DBG_OUTPUT_PORT.println(rgbOrder);
-    return  true;
-  } else {
-    DBG_OUTPUT_PORT.println("invalid input!");
-    return false;
-  }
-  return false;
 }

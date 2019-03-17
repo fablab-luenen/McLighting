@@ -97,4 +97,33 @@
  * - Pointers added for PubSubClient & AMQTTCLient
  * - RGBOrder is now stored human readable not as integer
  * - Bugfix on Fire 2012 animation as one variable was destroyed
+ * 
+ * 15 Mar 2019 v 2.2.2 rgbw 3colors
+ * websocket commands
+ * #   Set Maincolor
+ * ##  Set Back color
+ * ### Set xtra Color
+ * ?   Set speed
+ * %   Set brightness
+ * *   Set all
+ * !   Set single LED
+ * +   Set multiple LEDs
+ * R   Set Range
+ * =   Set named Mode (legacy)
+ * $   Get Status
+ * new from here
+ * C   Get Config  
+ * Ch  Set hostname
+ * Cmh Set mqtt hostname
+ * Cmp Set mqtt port
+ * Cmu Set mqtt username
+ * Cmw Set mqtt password
+ * Csc Set Strip LED count
+ * Csr Set Strip RGB Order
+ * Csp Set Strip pin
+ * Cso Set Strip FX Options
+ * to here
+ * ~   Get Modes
+ * /   Set modes
+ * 
  */

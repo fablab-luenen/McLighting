@@ -3,16 +3,16 @@
 // ***************************************************************************
 
 // Prototypes
-void   handleAutoStart(void);
-String listStatusJSON(void);
-//bool   checkRGBOrder(void);
+void   handleAutoStart();
+String listStatusJSON();
+bool   writeConfigFS(bool);
 
 #if defined(ENABLE_E131)
 void handleE131(){
-  if (!e131.isEmpty())
+  if (!e131->isEmpty())
   {
     e131_packet_t packet;
-    e131.pull(&packet); // Pull packet from ring buffer
+    e131->pull(&packet); // Pull packet from ring buffer
 
     uint16_t universe = htons(packet.universe);
     uint8_t *data = packet.property_values + 1;
@@ -83,7 +83,7 @@ void getArgs() {
     back_color.blue = ((rgb2 >> 0) & 0xFF);
   } else {
     if ((server.arg("r2") != "") && (server.arg("r2").toInt() >= 0) && (server.arg("r2").toInt() <= 255)) { 
-      back_color.red = server.arg("r2").toInt();
+      back_color.red = constrain(server.arg("r2").toInt(), 0, 255);
     }
     if ((server.arg("g2") != "") && (server.arg("g2").toInt() >= 0) && (server.arg("g2").toInt() <= 255)) {
       back_color.green = server.arg("g2").toInt();
@@ -282,6 +282,88 @@ void handleRangeDifferentColors(uint8_t * mypayload) {
   }
 }
 
+bool checkPin(uint8_t pin) {  
+  if (((pin >= 0 && pin <= 5) || (pin >= 12 && pin <= 16)) && (pin != WS2812FXStripSettings.pin)) {
+    WS2812FXStripSettings.pin = pin;
+    return true;
+  }
+  return false;
+}
+
+
+neoPixelType checkRGBOrder(char rgbOrder[5]) {
+  for( int i=0 ; i < sizeof(rgbOrder) ; ++i ) rgbOrder[i] = toupper(rgbOrder[i]) ;
+  DBG_OUTPUT_PORT.printf("Checking RGB Order: %s ...", rgbOrder);
+  neoPixelType returnOrder;
+  if (strcmp(rgbOrder, "GRB") == 0)  {
+    returnOrder = NEO_GRB;
+  } else if (strcmp(rgbOrder, "GBR") == 0) {
+    returnOrder = NEO_GBR;
+  } else if (strcmp(rgbOrder, "RGB") == 0) {
+    returnOrder = NEO_RGB;
+  } else if (strcmp(rgbOrder, "RBG") == 0) {
+    returnOrder = NEO_RBG;
+  } else if (strcmp(rgbOrder, "BRG") == 0) {
+    returnOrder = NEO_BRG;
+  } else if (strcmp(rgbOrder, "BGR") == 0) {
+    returnOrder = NEO_BGR;
+  } else if (strcmp(rgbOrder, "WGRB") == 0) {
+    returnOrder = NEO_WGRB;
+  } else if (strcmp(rgbOrder, "WGBR") == 0) {
+    returnOrder = NEO_WGBR;
+  } else if (strcmp(rgbOrder, "WRGB") == 0) {
+    returnOrder = NEO_WRGB;
+  } else if (strcmp(rgbOrder, "WRBG") == 0) {
+    returnOrder = NEO_WRBG;
+  } else if (strcmp(rgbOrder, "WBRG") == 0) {
+    returnOrder = NEO_WBRG;
+  } else if (strcmp(rgbOrder, "WBGR") == 0) {
+    returnOrder = NEO_WBGR;
+  } else if (strcmp(rgbOrder, "GWRB") == 0) {
+    returnOrder = NEO_GWRB;
+  } else if (strcmp(rgbOrder, "GWBR") == 0) {
+    returnOrder = NEO_GWBR;
+  } else if (strcmp(rgbOrder, "RWGB") == 0) {
+    returnOrder = NEO_RWGB;
+  } else if (strcmp(rgbOrder, "RWBG") == 0) {
+    returnOrder = NEO_RWBG;
+  } else if (strcmp(rgbOrder, "BWRG") == 0) {
+    returnOrder = NEO_BWRG;
+  } else if (strcmp(rgbOrder, "BWGR") == 0) {
+    returnOrder = NEO_BWGR;
+  } else if (strcmp(rgbOrder, "GRWB") == 0) {
+    returnOrder = NEO_GRWB;
+  } else if (strcmp(rgbOrder, "GBWR") == 0) {
+    returnOrder = NEO_GBWR;
+  } else if (strcmp(rgbOrder, "RGWB") == 0) {
+    returnOrder = NEO_RGWB;
+  } else if (strcmp(rgbOrder, "RBWG") == 0) {
+    returnOrder = NEO_RBWG;
+  } else if (strcmp(rgbOrder, "BRWG") == 0){
+    returnOrder = NEO_BRWG;
+  } else if (strcmp(rgbOrder, "BGWR") == 0) {
+    returnOrder = NEO_GRBW;
+  } else if (strcmp(rgbOrder, "GRBW") == 0) {
+    returnOrder = NEO_GRBW;
+  } else if (strcmp(rgbOrder, "GBWR") == 0) {
+    returnOrder = NEO_GBRW;
+  } else if (strcmp(rgbOrder, "RGBW") == 0) {
+    returnOrder = NEO_RGBW;
+  } else if (strcmp(rgbOrder, "RBGW") == 0) {
+    returnOrder = NEO_RBGW;
+  } else if (strcmp(rgbOrder, "BRGW") == 0) {
+    returnOrder = NEO_BRGW;
+  } else if (strcmp(rgbOrder, "BGRW") == 0) {
+    returnOrder = NEO_BGRW;
+  } else {
+    DBG_OUTPUT_PORT.print("invalid input!");
+    returnOrder = static_cast<neoPixelType>(checkRGBOrder(WS2812FXStripSettings.RGBOrder));
+  }
+  DBG_OUTPUT_PORT.println("success!");
+  strcpy(WS2812FXStripSettings.RGBOrder, rgbOrder);
+  return returnOrder;
+}
+
 bool setConfByConfString(String saved_conf_string) {
   if (getValue(saved_conf_string, '|', 0) == "CNF") {
     DBG_OUTPUT_PORT.printf("Parsed conf: %s\r\n", saved_conf_string.c_str());
@@ -293,9 +375,10 @@ bool setConfByConfString(String saved_conf_string) {
     getValue(saved_conf_string, '|', 5).toCharArray(mqtt_pass, 32);
   #endif
     WS2812FXStripSettings.stripSize = getValue(saved_conf_string, '|', 6).toInt();
-    WS2812FXStripSettings.pin = getValue(saved_conf_string, '|', 7).toInt();
-    getValue(saved_conf_string, '|', 8).toCharArray(rgbOrder, 4);
-    checkRGBOrder();
+    checkPin(getValue(saved_conf_string, '|', 7).toInt());
+    char tmp_rgbOrder[5];
+    getValue(saved_conf_string, '|', 8).toCharArray(tmp_rgbOrder, 4);
+    checkRGBOrder(tmp_rgbOrder);
     WS2812FXStripSettings.fxoptions = getValue(saved_conf_string, '|', 9).toInt();
     return true;
   } else {
@@ -433,7 +516,7 @@ void handleSetWS2812FXMode(uint8_t * mypayload) {
   }    
 }
 
-String listStatusJSON(void) {
+String listStatusJSON() {
   //uint8_t tmp_mode = (mode == SET_MODE) ? (uint8_t) ws2812fx_mode : strip->getMode(); 
   const size_t bufferSize = JSON_ARRAY_SIZE(12) + JSON_OBJECT_SIZE(6) + 500;
   DynamicJsonDocument jsonBuffer(bufferSize);
@@ -457,14 +540,14 @@ String listStatusJSON(void) {
   color.add(xtra_color.white);
   color.add(xtra_color.red);
   color.add(xtra_color.green);
-  color.add(xtra_color.blue);  
+  color.add(xtra_color.blue);
   String json;
   serializeJson(root, json);
   jsonBuffer.clear();
   return json;
 }
 
-String listConfigJSON(void) {
+String listConfigJSON() {
   //uint8_t tmp_mode = (mode == SET_MODE) ? (uint8_t) ws2812fx_mode : strip->getMode(); 
   #if defined(ENABLE_MQTT)
     const size_t bufferSize = JSON_OBJECT_SIZE(9) + 500;
@@ -481,7 +564,7 @@ String listConfigJSON(void) {
     root["mqtt_pass"] = mqtt_pass;
   #endif
   root["ws_cnt"]    = WS2812FXStripSettings.stripSize;
-  root["ws_rgbo"]   = rgbOrder;
+  root["ws_rgbo"]   = WS2812FXStripSettings.RGBOrder;
   root["ws_pin"]    = WS2812FXStripSettings.pin;
   root["ws_fxopt"]  = WS2812FXStripSettings.fxoptions;
   String json;
@@ -502,7 +585,7 @@ void getConfigJSON() {
 }
 
 
-String listModesJSON(void) {
+String listModesJSON() {
   const size_t bufferSize = JSON_ARRAY_SIZE(strip->getModeCount() + 3) + (strip->getModeCount() + 3)*JSON_OBJECT_SIZE(2) + 2000;
   DynamicJsonDocument jsonBuffer(bufferSize);
   JsonArray root = jsonBuffer.to<JsonArray>();
@@ -724,6 +807,106 @@ void checkpayload(uint8_t * payload, bool mqtt = false, uint8_t num = 0) {
     DBG_OUTPUT_PORT.println("Get status info: " + json);
   }
 
+
+    // $ ==> Get config Info.
+  if (payload[0] == 'C') {
+    bool updateFSE = false;
+    if (payload[1] == 'h') {
+      snprintf(HOSTNAME, sizeof(HOSTNAME), "%s", &payload[2]);
+      updateFSE=true;
+    #if defined(ENABLE_MQTT)
+      initMqtt();
+    #endif
+    }
+  #if defined(ENABLE_MQTT)
+    if (payload[1] == 'm') {
+      if (payload[2] == 'h') {
+        snprintf(mqtt_host, sizeof(mqtt_host), "%s", &payload[3]);
+        updateFSE=true;
+      }
+      if (payload[2] == 'p') {
+        char tmp_port[6];
+        snprintf(tmp_port, sizeof(tmp_port), "%s", &payload[3]);
+        mqtt_port = constrain(atoi(tmp_port), 0, 65535);
+        updateFSE=true;
+      }
+      if (payload[2] == 'u') {
+        snprintf(mqtt_user, sizeof(mqtt_user), "%s", &payload[3]);
+        updateFSE=true;
+      }
+      if (payload[2] == 'w') {
+        snprintf(mqtt_pass, sizeof(mqtt_pass), "%s", &payload[3]);
+        updateFSE=true;
+      }
+      initMqtt();      
+    }
+  #endif
+    if (payload[1] == 's') {
+      if (payload[2] == 'c') {
+        char tmp_count[6];
+        snprintf(tmp_count, sizeof(tmp_count), "%s", &payload[3]);
+        WS2812FXStripSettings.stripSize = constrain(atoi(tmp_count), 0, 65535);
+        updateFSE=true;
+      }
+      if (payload[2] == 'r') {     
+        char tmp_rgbOrder[5];
+        snprintf(tmp_rgbOrder, sizeof(tmp_rgbOrder), "%s", &payload[3]);
+        checkRGBOrder(tmp_rgbOrder);
+        updateFSE=true;    
+      }
+    #if !defined(USE_WS2812FX_DMA)
+      if (payload[2] == 'p') {
+        char tmp_pin[3];
+        snprintf(tmp_pin, sizeof(tmp_pin), "%s", &payload[3]);
+        checkPin(atoi(tmp_pin));
+        updateFSE=true;
+      }
+    #endif
+      if (payload[2] == 'o') {
+         char tmp_fxoptions[4];
+         snprintf(tmp_fxoptions, sizeof(tmp_fxoptions), "%s", &payload[3]);
+         WS2812FXStripSettings.fxoptions = constrain(atoi(tmp_fxoptions), 0, 255);
+         updateFSE=true; 
+      }
+      mode = INIT_STRIP;          
+    }   
+  
+    #if defined(ENABLE_STATE_SAVE)
+      #if ENABLE_STATE_SAVE == 1  
+        (writeConfigFS(updateFSE)) ? DBG_OUTPUT_PORT.println("Config FS Save success!"): DBG_OUTPUT_PORT.println("Config FS Save failure!");
+      #endif
+      #if ENABLE_STATE_SAVE == 0 
+        if (updateFSE) {
+          char last_conf[223];
+        #if defined(ENABLE_MQTT)
+          snprintf(last_conf, sizeof(last_conf), "CNF|%64s|%64s|%5d|%32s|%32s|%4d|%2d|%4s|%3d", HOSTNAME, mqtt_host, mqtt_port, mqtt_user, mqtt_pass, WS2812FXStripSettings.stripSize, WS2812FXStripSettings.pin, WS2812FXStripSettings.RGBOrder, WS2812FXStripSettings.fxoptions);
+        #else
+          snprintf(last_conf, sizeof(last_conf), "CNF|%64s|%64s|%5d|%32s|%32s|%4d|%2d|%4s|%3d", HOSTNAME, "", "", "", "", WS2812FXStripSettings.stripSize, WS2812FXStripSettings.pin, WS2812FXStripSettings.RGBOrder, WS2812FXStripSettings.fxoptions);
+        #endif
+          writeEEPROM(0, 222, last_conf);
+          EEPROM.commit();
+        }
+      #endif
+    #endif     
+    String json = listConfigJSON();
+    if (mqtt == true)  {
+      DBG_OUTPUT_PORT.print("MQTT: ");
+      #if defined(ENABLE_MQTT)
+        #if ENABLE_MQTT == 0
+          mqtt_client->publish(mqtt_outtopic, json.c_str());
+        #endif
+        #if ENABLE_MQTT == 1
+          mqtt_client->publish(mqtt_outtopic, qospub, false, json.c_str());
+        #endif
+      #endif
+    } else {
+      DBG_OUTPUT_PORT.print("WS: ");
+      webSocket.sendTXT(num, "OK");
+      webSocket.sendTXT(num, json);
+    }
+    DBG_OUTPUT_PORT.println("Get status info: " + json);
+  }
+
   // ~ ==> Get WS2812 modes.
   if (payload[0] == '~') {
     String json = listModesJSON();
@@ -731,15 +914,13 @@ void checkpayload(uint8_t * payload, bool mqtt = false, uint8_t num = 0) {
       DBG_OUTPUT_PORT.print("MQTT: "); 
       #if defined(ENABLE_MQTT)
         #if ENABLE_MQTT == 0
-          // TODO: Fix this, doesn't return anything. Too long?
-          // Hint: https://github.com/knolleary/pubsubclient/issues/110
-          DBG_OUTPUT_PORT.printf("Error: Not implemented. Message too large for pubsubclient.");
-          mqtt_client->publish(mqtt_outtopic, "ERROR: Not implemented. Message too large for pubsubclient.");
-          //String json_modes = listModesJSON();
-          //DBG_OUTPUT_PORT.printf(json_modes.c_str());
-      
-          //int res = mqtt_client->publish(mqtt_outtopic, json_modes.c_str(), json_modes.length());
-          //DBG_OUTPUT_PORT.printf("Result: %d / %d", res, json_modes.length());
+          String json = listModesJSON();
+          unsigned int msg_len = measureJson(json) + 1;
+          char buffer[msg_len];
+          serializeJson(json, buffer, sizeof(buffer));
+          mqtt_client->beginPublish(mqtt_outtopic, msg_len, true);
+          mqtt_client->write((const uint8_t*)buffer, msg_len);
+          mqtt_client->endPublish();       
         #endif
         #if ENABLE_MQTT == 1
           mqtt_client->publish(mqtt_outtopic, qospub, false, json.c_str());
@@ -1424,10 +1605,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
             strcpy(mqtt_pass, json["mqtt_pass"]);
           #endif
             WS2812FXStripSettings.stripSize = (uint8_t) json["ws_cnt"];
-            strcpy(rgbOrder, json["ws_rgbo"]);
+            char tmp_rgbOrder[5];
+            strcpy(tmp_rgbOrder, json["ws_rgbo"]);
+            checkRGBOrder(tmp_rgbOrder);
+            uint8_t temp_pin;
             WS2812FXStripSettings.pin = (uint8_t) json["ws_pin"];  
             WS2812FXStripSettings.fxoptions = (uint8_t) json["ws_fxopt"];        
-            checkRGBOrder();
             jsonBuffer.clear();
             return true;
           } else {

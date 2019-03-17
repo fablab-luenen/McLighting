@@ -1,16 +1,14 @@
 #define USE_WS2812FX_DMA 0      // 0 = Used PIN is ignored & set to RX/GPIO3; 1 = Used PIN is ignored & set to D4/GPIO2; 2 = Uses PIN is ignored & set to TX/GPIO1;  Uses WS2812FX, see: https://github.com/kitesurfer1404/WS2812FX
 
 // Neopixel
-#define LED_PIN 3          // PIN (15 / D8) where neopixel / WS2811 strip is attached 
-#define NUMLEDS 144        // Number of leds in the strip 
-#define RGBORDER "GRBW"    // RGBOrder;
-#define FX_OPTIONS 56       // ws2812fx Options 56 = SIZE_SMALL + FADE_MEDIUM + GAMMA for WS2812FX setSegment OPTIONS, see: https://github.com/kitesurfer1404/WS2812FX/blob/master/extras/WS2812FX%20Users%20Guide.md
-//#define LED_TYPE_WS2811    // Uncomment if LED type uses 400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
+#define LED_PIN 3          // PIN (15 / D8) where neopixel / WS2811 strip is attached; is configurable just for the start
+#define NUMLEDS 144        // Number of leds in the; is configurable just for the start
+#define RGBORDER "GRBW"    // RGBOrder; is configurable just for the start
+#define FX_OPTIONS 56      // ws2812fx Options 56 = SIZE_SMALL + FADE_MEDIUM + GAMMA  is configurable just for the start; for WS2812FX setSegment OPTIONS, see: https://github.com/kitesurfer1404/WS2812FX/blob/master/extras/WS2812FX%20Users%20Guide.md
+//#define LED_TYPE_WS2811    // Uncomment, if LED type uses 400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
 #define LED_BUILTIN 2      // ESP-12F has the built in LED on GPIO2, see https://github.com/esp8266/Arduino/issues/2192
 
-char rgbOrder[5] = "GRBW";
-
-char HOSTNAME[65] = "McLightingRGBW";   // Friedly hostname
+char HOSTNAME[65] = "McLightingRGBW";   // Friedly hostname  is configurable just for the start
 
 #define ENABLE_OTA 1                  // If defined, enable Arduino OTA code. If set to 0 enable Arduino OTA code, if set to 1 enable ESP8266HTTPUpdateServer OTA code.
 #define ENABLE_MQTT 1                 // If defined use MQTT OR AMQTT, if set to 0 enable MQTT client code, see: https://github.com/toblum/McLighting/wiki/MQTT-API, if set to 1, enable Async MQTT code, see: https://github.com/marvinroger/async-mqtt-client
@@ -27,9 +25,10 @@ char HOSTNAME[65] = "McLightingRGBW";   // Friedly hostname
 #define CUSTOM_WS2812FX_ANIMATIONS    //uncomment and put animations in "custom_ws2812fx_animations.h" 
 #define ENABLE_E131                   // E1.31 implementation You have to uncomment #define USE_WS2812FX_DMA and set it to 0
 #define ENABLE_TV                     // Enable TV Animation 
-//#define USE_HTML_MIN_GZ               //uncomment for using index.htm & edit.htm from PROGMEM instead of SPIFFs
+#define USE_HTML_MIN_GZ               //uncomment for using index.htm & edit.htm from PROGMEM instead of SPIFFs
 
 #if defined(ENABLE_E131)
+  #define MULTICAST false
   #define START_UNIVERSE 1            // First DMX Universe to listen for
   #define END_UNIVERSE 2              // Total number of Universes to listen for, starting at UNIVERSE
                                       // MUST: END_UNIVERSE >= START_UNIVERSE
@@ -54,6 +53,18 @@ char HOSTNAME[65] = "McLightingRGBW";   // Friedly hostname
 
 #if defined(MQTT_HOME_ASSISTANT_SUPPORT)
   #define MQTT_HOME_ASSISTANT_0_87_SUPPORT // Comment if using HA version < 0.87 
+#endif
+
+#if defined(USE_WS2812FX_DMA) and USE_WS2812FX_DMA < 0 and USE_WS2812FX_DMA > 2
+#error "Definition of USE_WS2812FX_DMA is wrong!"
+#endif
+
+#if defined(ENABLE_MQTT) and ENABLE_MQTT < 0 and ENABLE_MQTT > 1
+#error "Definition of ENABLE_MQTT is wrong!"
+#endif
+
+#if defined(ENABLE_MQTT) and ENABLE_MQTT < 0 and ENABLE_MQTT > 1
+#error "Definition of ENABLE_MQTT is wrong!"
 #endif
 
 #if defined(ENABLE_HOMEASSISTANT) and !defined(ENABLE_MQTT)
@@ -101,10 +112,10 @@ uint32_t autoParams[][6] = {   // main_color, back_color, xtra_color, speed, mod
   #endif
 
   char     mqtt_clientid[sizeof(HOSTNAME) + 9];
-  char     mqtt_host[65] = "";
-  uint16_t mqtt_port     = 1883;
-  char     mqtt_user[33] = "";
-  char     mqtt_pass[33] = "";
+  char     mqtt_host[65] = "";    //is configurable just for the start
+  uint16_t mqtt_port     = 1883;  //is configurable just for the start
+  char     mqtt_user[33] = "";    //is configurable just for the start
+  char     mqtt_pass[33] = "";    //is configurable just for the start
 #endif
 
 
@@ -173,7 +184,7 @@ bool updateState = false;
   
 struct {
   uint16_t stripSize = NUMLEDS;
-  uint8_t RGBOrder = 0;
+  char RGBOrder[5]  = RGBORDER;
   #if defined(USE_WS2812FX_DMA)
     #if USE_WS2812FX_DMA == 0
       uint8_t pin = 3;
@@ -187,5 +198,5 @@ struct {
   #else
     uint8_t pin = LED_PIN;
   #endif
-  uint8_t fxoptions = FX_OPTIONS; 
+  uint8_t fxoptions = FX_OPTIONS;
 } WS2812FXStripSettings;
