@@ -322,8 +322,8 @@ neoPixelType checkRGBOrder(char rgbOrder[5]) {
   for( uint8_t i=0 ; i < sizeof(rgbOrder) ; ++i ) rgbOrder[i] = toupper(rgbOrder[i]) ;
   DBG_OUTPUT_PORT.printf("Checking RGB Order: %s ...", rgbOrder);
   neoPixelType returnOrder = 0;
-  if (strcmp(rgbOrder, "GRB") == 0)  {
-    returnOrder = NEO_GRB;
+  if (strcmp(rgbOrder, "GRBW") == 0)  {
+    returnOrder = NEO_GRBW;
   } else if (strcmp(rgbOrder, "GBR") == 0) {
     returnOrder = NEO_GBR;
   } else if (strcmp(rgbOrder, "RGB") == 0) {

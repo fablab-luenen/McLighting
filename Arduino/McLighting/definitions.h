@@ -6,7 +6,7 @@
 #endif 
 // Neopixel
 #define LED_PIN 2          // PIN (15 / D8) where neopixel / WS2811 strip is attached; is configurable, if USE_WS2812FX_DMA is not defined. Just for the start
-#define NUMLEDS 50         // Number of leds in the; is configurable just for the start 
+#define NUMLEDS 150         // Number of leds in the; is configurable just for the start 
 #define RGBORDER "GRBW"    // RGBOrder; is configurable just for the start
 #define FX_OPTIONS 48      // ws2812fx Options 56 = SIZE_SMALL + FADE_MEDIUM  is configurable just for the start; for WS2812FX setSegment OPTIONS, see: https://github.com/kitesurfer1404/WS2812FX/blob/master/extras/WS2812FX%20Users%20Guide.md
 //#define LED_TYPE_WS2811    // Uncomment, if LED type uses 400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
@@ -19,16 +19,16 @@ char HOSTNAME[65] = "McLightingRGBW"; // Friedly hostname  is configurable just 
 //#define ENABLE_MQTT_HOSTNAME_CHIPID   // Uncomment/comment to add ESPChipID to end of MQTT hostname
 #define ENABLE_HOMEASSISTANT          // If defined, enable Homeassistant integration, ENABLE_MQTT must be active
 #define MQTT_HOME_ASSISTANT_SUPPORT   // If defined, use AMQTT and select Tools -> IwIP Variant -> Higher Bandwidth
-#define ENABLE_BUTTON 14              // If defined, enable button handling code, see: https://github.com/toblum/McLighting/wiki/Button-control, the value defines the input pin (14 / D5) for switching the LED strip on / off, connect this PIN to ground to trigger button.
-#define ENABLE_BUTTON_GY33 12         // If defined, enable button handling code for GY-33 color sensor to scan color. The value defines the input pin (12 / D6) for read color data with RGB sensor, connect this PIN to ground to trigger button.
-#define ENABLE_REMOTE 13              // If defined, enable Remote Control via TSOP31238. The value defines the input pin (13 / D7) for TSOP31238 Out 
+//#define ENABLE_BUTTON 14              // If defined, enable button handling code, see: https://github.com/toblum/McLighting/wiki/Button-control, the value defines the input pin (14 / D5) for switching the LED strip on / off, connect this PIN to ground to trigger button.
+//#define ENABLE_BUTTON_GY33 12         // If defined, enable button handling code for GY-33 color sensor to scan color. The value defines the input pin (12 / D6) for read color data with RGB sensor, connect this PIN to ground to trigger button.
+//#define ENABLE_REMOTE 13              // If defined, enable Remote Control via TSOP31238. The value defines the input pin (13 / D7) for TSOP31238 Out 
 
 #define ENABLE_STATE_SAVE 0           // If defined, load saved state on reboot and save state. If set to 0 from EEPROM, if set to 1 from SPIFFS
 
 #define ENABLE_LEGACY_ANIMATIONS      // Enable Legacy Animations
 #define CUSTOM_WS2812FX_ANIMATIONS    // uncomment and put animations in "custom_ws2812fx_animations.h" 
 #define ENABLE_E131                   // E1.31 implementation You have to uncomment #define USE_WS2812FX_DMA and set it to 0
-#define ENABLE_TV                     // Enable TV Animation 
+//#define ENABLE_TV                     // Enable TV Animation 
 #define USE_HTML_MIN_GZ               // uncomment for using index.htm & edit.htm from PROGMEM instead of SPIFFs
 
 #if defined(ENABLE_E131)
@@ -139,7 +139,7 @@ MODE prevmode = mode;
 
 uint8_t ws2812fx_speed = 196;  // Global variable for storing the delay between color changes --> smaller == faster
 uint8_t brightness = 196;      // Global variable for storing the brightness (255 == 100%)
-uint8_t ws2812fx_mode = 0;     // Global variable for storing the WS2812FX modes
+uint8_t ws2812fx_mode = 14;     // Global variable for storing the WS2812FX modes
 
 uint32_t hex_colors[3] = {};   // Color array for setting WS2812FX
 struct ledstate                // Data structure to store a state of a single led
@@ -153,8 +153,8 @@ struct ledstate                // Data structure to store a state of a single le
 typedef struct ledstate LEDState;        // Define the datatype LEDState
 uint8_t* ledstates;                      // Set a pointer to get an array of led states to store the state of the whole strip
 LEDState main_color = { 255, 0, 0, 0 };  // Store the "main color" of the strip used in single color modes
-LEDState back_color = {   0, 0, 0, 0 };  // Store the "2nd color" of the strip used in single color modes
-LEDState xtra_color = {   0, 0, 0, 0 };  // Store the "3rd color" of the strip used in single color modes
+LEDState back_color = {   0, 0, 0, 17 };  // Store the "2nd color" of the strip used in single color modes
+LEDState xtra_color = {   0, 255, 255, 0 };  // Store the "3rd color" of the strip used in single color modes
 
 bool shouldSaveConfig = false;  // For WiFiManger custom config and config
 char last_state[67];            // Keeps the state representation before auto or off mode 
