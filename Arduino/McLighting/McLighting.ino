@@ -727,6 +727,7 @@ void loop() {
         WiFi.disconnect();
         WiFi.setSleepMode(WIFI_NONE_SLEEP);
         WiFi.mode(WIFI_STA);
+        WiFi.hostname(HOSTNAME); 
         WiFi.begin();
       } else {
         if ((strlen(mqtt_host) != 0) && (mqtt_port != 0) && (mqtt_reconnect_retries < MQTT_MAX_RECONNECT_TRIES)) {
@@ -781,13 +782,13 @@ void loop() {
       if (prevmode != mode) { snprintf(mqtt_buf, sizeof(mqtt_buf), "OK =off", ""); }
     #endif
     #if defined(POWER_SUPPLY)
-      if (prevmode != mode) {digitalWrite(POWER_SUPPLY, LOW); } // power off -> external power supply
+      if (prevmode != mode) {digitalWrite(POWER_SUPPLY, !POWER_ON); } // power off -> external power supply
     #endif
   }
   
 #if defined(POWER_SUPPLY)
   if (mode != OFF) {
-    if (prevmode != mode) {digitalWrite(POWER_SUPPLY, HIGH); } // power on -> external power supply
+    if (prevmode != mode) {digitalWrite(POWER_SUPPLY, POWER_ON); } // power on -> external power supply
   }
 #endif
 

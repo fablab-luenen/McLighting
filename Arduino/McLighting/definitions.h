@@ -13,6 +13,9 @@
 //#define LED_TYPE_WS2811    // Uncomment, if LED type uses 400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
 #define LED_BUILTIN 2      // ESP-12F has the built in LED on GPIO2, see https://github.com/esp8266/Arduino/issues/2192
 #define POWER_SUPPLY 12    // PIN (12 / D6) If defined, enable output to control external power supply 
+#if defined(POWER_SUPPLY)
+  #define POWER_ON   HIGH           // Define the output state to turn on the power supply, either HIGH or LOW.  Opposite will be uses for power off.
+#endif 
 
 char HOSTNAME[65] = "McLightingRGBW"; // Friedly hostname  is configurable just for the start. Hostname should not contain spaces as this can break Home Assistant discovery if used.
 
@@ -168,10 +171,10 @@ bool updateState = false;
 // Button handling
 
 #if defined(ENABLE_BUTTON)
-//#define BTN_MODE_SHORT  "STA|mo|fxm|  h|  s| r1| g1| b1| w1| r2| g2| b2| w2| r3| g3| b3| w3"   // Example
-  #define BTN_MODE_SHORT  "STA| 5|  0|255|196|  0|  0|  0|255|  0|  0|  0|  0|  0|  0|  0|  0"   // Static white
-  #define BTN_MODE_MEDIUM "STA| 5| 48|200|196|255|102|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0"   // Fire flicker
-  #define BTN_MODE_LONG   "STA| 5| 46|200|196|255|102|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0"   // Fireworks random
+//#define BTN_MODE_SHORT  "STA|mo|fxm|  s|  b| r1| g1| b1| w1| r2| g2| b2| w2| r3| g3| b3| w3"   // Example
+  #define BTN_MODE_SHORT  "STA| 5|  0|196|255|  0|  0|  0|255|  0|  0|  0|  0|  0|  0|  0|  0"   // Static white
+  #define BTN_MODE_MEDIUM "STA| 5| 48|196|200|255|102|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0"   // Fire flicker
+  #define BTN_MODE_LONG   "STA| 5| 46|196|200|255|102|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0"   // Fireworks random
   unsigned long keyPrevMillis = 0;
   const unsigned long keySampleIntervalMs = 25;
   byte longKeyPressCountMax = 80;       // 80 * 25 = 2000 ms
