@@ -318,13 +318,26 @@ server.on("/config", []() {
   getConfigJSON();
 });
 
-server.on("/off", []() {
+server.on("/toggle", []() {
   if (State.mode == OFF) { State.mode = SET; } else { State.mode = OFF; };
   getACK("OK");
   #if defined(ENABLE_STATE_SAVE)
     if(save_state.active()) save_state.detach();
     save_state.once(3, tickerSaveState);
   #endif
+});
+
+server.on("/off", []() {
+  if (State.mode == SET) {
+    State.mode = OFF;
+    getACK("OK");
+    #if defined(ENABLE_STATE_SAVE)
+      if(save_state.active()) save_state.detach();
+      save_state.once(3, tickerSaveState);
+    #endif
+  } else {
+    getACK("NOK");
+  }
 });
 
 server.on("/on", []() {

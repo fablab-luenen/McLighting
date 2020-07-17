@@ -200,11 +200,14 @@ void handleSetWS2812FXMode(uint8_t * mypayload) {
     fx_mode = constrain(fx_mode, 0, strip->getModeCount() - 1);
     State.mode = SET;
   } else  {
-    if (strcmp((char *) &mypayload[1], "off") == 0) {
+    if (strcmp((char *) &mypayload[1], "toggle") == 0) {
       if (State.mode == OFF) { State.mode = SET; } else { State.mode = OFF; };
     }
     if (strcmp((char *) &mypayload[1], "on") == 0) {
       State.mode = SET;
+    }
+    if (strcmp((char *) &mypayload[1], "off") == 0) {
+      State.mode = OFF;
     }
   }
 }
